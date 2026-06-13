@@ -6,19 +6,36 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            VStack {
+                Image(systemName: "globe")
+                    .imageScale(.large)
+                    .foregroundStyle(.tint)
+                Text("Hello, world!")
+            }
+            .padding()
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+
+            SwiftDataDebugView()
+                .tabItem {
+                    Label("Debug", systemImage: "ladybug")
+                }
         }
-        .padding()
     }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: [
+            Widget.self,
+            Transaction.self,
+            IncomeEvent.self,
+            UserSettings.self
+        ], inMemory: true)
 }
