@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BB5F94112FDF4635000B4503 /* LinkKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB5F94102FDF4635000B4503 /* LinkKit */; };
+		BB5F94132FDF4636000B4503 /* LinkKitObjC in Frameworks */ = {isa = PBXBuildFile; productRef = BB5F94122FDF4636000B4503 /* LinkKitObjC */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		BB5F93FC2FDC9E17000B4503 /* cash-flow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "cash-flow.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB5F94112FDF4635000B4503 /* LinkKit in Frameworks */,
+				BB5F94132FDF4636000B4503 /* LinkKitObjC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,8 @@
 			);
 			name = "cash-flow";
 			packageProductDependencies = (
+				BB5F94102FDF4635000B4503 /* LinkKit */,
+				BB5F94122FDF4636000B4503 /* LinkKitObjC */,
 			);
 			productName = "cash-flow";
 			productReference = BB5F93FC2FDC9E17000B4503 /* cash-flow.app */;
@@ -94,6 +103,9 @@
 			);
 			mainGroup = BB5F93F32FDC9E17000B4503;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BB5F93FD2FDC9E17000B4503 /* Products */;
 			projectDirPath = "";
@@ -349,6 +361,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/plaid/plaid-link-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BB5F94102FDF4635000B4503 /* LinkKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */;
+			productName = LinkKit;
+		};
+		BB5F94122FDF4636000B4503 /* LinkKitObjC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */;
+			productName = LinkKitObjC;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BB5F93F42FDC9E17000B4503 /* Project object */;
 }

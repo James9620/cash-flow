@@ -22,6 +22,11 @@ struct ContentView: View {
                 Label("Home", systemImage: "house")
             }
 
+            BankConnectionView()
+                .tabItem {
+                    Label("Bank", systemImage: "building.columns")
+                }
+
             SwiftDataDebugView()
                 .tabItem {
                     Label("Debug", systemImage: "ladybug")

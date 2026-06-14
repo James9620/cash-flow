@@ -34,12 +34,29 @@ app.post('/create-link-token', async (req, res) => {
       products: [Products.Transactions],
       country_codes: [CountryCode.Us],
       language: 'en',
+      redirect_uri: 'https://cash-flow-production-341d.up.railway.app/oauth-redirect',
     });
 
     res.json({ link_token: response.data.link_token });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Exists solely to satisfy Plaid's OAuth flow requirement.
+app.get('/oauth-redirect', (req, res) => {
+  res.send(`
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <title>Cash Flow</title>
+      </head>
+      <body>
+        Redirecting back to Cash Flow...
+      </body>
+    </html>
+  `);
 });
 
 // Called by the iOS app after the user connects their bank. Exchanges a short-lived public_token for a permanent access_token.
