@@ -2,10 +2,13 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } = require('plaid');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const tokensFilePath = path.join(__dirname, 'tokens.json');
 
 app.use(cors());
 app.use(express.json());
@@ -45,10 +48,37 @@ app.post('/exchange-public-token', async (req, res) => {
     const { public_token } = req.body;
     const response = await plaidClient.itemPublicTokenExchange({ public_token });
 
-    // Proper database storage for the access_token will be added in Phase 4.
     console.log('ACCESS TOKEN (save this):', response.data.access_token);
+    // Development only: store the access_token locally. Production should use a proper database.
+    fs.writeFileSync(
+      tokensFilePath,
+      JSON.stringify({ access_token: response.data.access_token }, null, 2)
+    );
 
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// transactionsSync returns incremental transaction updates from Plaid and is Plaid's recommended approach for fetching transactions.
+app.get('/fetch-transactions', async (req, res) => {
+  try {
+    if (!fs.existsSync(tokensFilePath)) {
+      return res.status(400).json({ error: 'No access token found. Connect a bank first.' });
+    }
+
+    const tokens = JSON.parse(fs.readFileSync(tokensFilePath, 'utf8'));
+    if (!tokens.access_token) {
+      return res.status(400).json({ error: 'No access token found. Connect a bank first.' });
+    }
+
+    const response = await plaidClient.transactionsSync({
+      access_token: tokens.access_token,
+      count: 100,
+    });
+
+    res.json({ transactions: response.data.added });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -58,6 +88,9 @@ app.post('/exchange-public-token', async (req, res) => {
 app.post('/webhook', (req, res) => {
   // Webhook signature verification will be added in Phase 4.
   console.log('PLAID WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
+  if (req.body.webhook_type === 'TRANSACTIONS') {
+    console.log('New transaction data available — app should refresh');
+  }
 
   res.json({ received: true });
 });
