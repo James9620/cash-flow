@@ -27,29 +27,29 @@ struct BankConnectionView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                if !transactions.isEmpty {
+                if transactions.isEmpty {
+                    Button {
+                        // The button starts an async task because fetching a link token is a network call.
+                        Task {
+                            if let token = await viewModel.connectBank() {
+                                // Store the link token so the sheet can create Plaid Link.
+                                linkToken = token
+
+                                // Present Plaid Link only after a valid token is available.
+                                showingPlaidLink = true
+                            }
+                        }
+                    } label: {
+                        Text("Connect Bank Account")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isLoading)
+                } else {
                     // Any existing transaction means the app has already imported bank data.
                     Text("Bank connected!")
                         .foregroundStyle(.green)
                 }
-
-                Button {
-                    // The button starts an async task because fetching a link token is a network call.
-                    Task {
-                        if let token = await viewModel.connectBank() {
-                            // Store the link token so the sheet can create Plaid Link.
-                            linkToken = token
-
-                            // Present Plaid Link only after a valid token is available.
-                            showingPlaidLink = true
-                        }
-                    }
-                } label: {
-                    Text("Connect Bank Account")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isLoading)
 
                 if viewModel.isLoading {
                     // This spinner appears while the view model is waiting on the backend or SwiftData.

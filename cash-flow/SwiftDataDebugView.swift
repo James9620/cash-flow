@@ -12,6 +12,7 @@ struct SwiftDataDebugView: View {
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Widget.name) private var widgets: [Widget]
+    @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
 
     var body: some View {
         NavigationStack {
@@ -41,6 +42,16 @@ struct SwiftDataDebugView: View {
                     } else {
                         ForEach(widgets) { widget in
                             WidgetDebugRow(widget: widget)
+                        }
+                    }
+                }
+
+                Section("Imported Transactions") {
+                    if allTransactions.isEmpty {
+                        ContentUnavailableView("No transactions imported yet.", systemImage: "creditcard")
+                    } else {
+                        ForEach(allTransactions) { transaction in
+                            ImportedTransactionDebugRow(transaction: transaction)
                         }
                     }
                 }
@@ -131,6 +142,34 @@ private struct WidgetDebugRow: View {
                     .padding(.leading)
                 }
             }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ImportedTransactionDebugRow: View {
+    let transaction: Transaction
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(transaction.merchant)
+                    .font(.headline)
+
+                Text(transaction.category)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                // Use SwiftUI's built-in date formatting so the debug view follows the user's locale.
+                Text(transaction.date, format: .dateTime.year().month().day())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(transaction.amount, format: .currency(code: "USD"))
+                .font(.subheadline)
         }
         .padding(.vertical, 4)
     }

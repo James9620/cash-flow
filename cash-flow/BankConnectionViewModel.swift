@@ -36,8 +36,8 @@ final class BankConnectionViewModel {
         }
 
         do {
-            // The sample app uses a hard-coded user ID until real authentication is added.
-            return try await networkService.createLinkToken(userID: "user-001")
+            // Each install gets its own user ID so the backend can store tokens separately.
+            return try await networkService.createLinkToken(userID: UserIdentity.currentUserID)
         } catch {
             // Store a readable message so the SwiftUI view can show the failure.
             errorMessage = error.localizedDescription
@@ -52,8 +52,11 @@ final class BankConnectionViewModel {
         errorMessage = nil
 
         do {
-            // The backend saves the long-lived access token after this call succeeds.
-            try await networkService.exchangePublicToken(publicToken)
+            // The backend saves the long-lived access token under this install's user ID.
+            try await networkService.exchangePublicToken(
+                publicToken,
+                userID: UserIdentity.currentUserID
+            )
         } catch {
             // If the exchange fails, there is no saved access token to fetch transactions with.
             errorMessage = error.localizedDescription
@@ -80,8 +83,10 @@ final class BankConnectionViewModel {
         }
 
         do {
-            // Get the latest transaction JSON from the backend.
-            let plaidTransactions = try await networkService.fetchTransactions()
+            // Get the latest transaction JSON from the backend for this install's user ID.
+            let plaidTransactions = try await networkService.fetchTransactions(
+                userID: UserIdentity.currentUserID
+            )
 
             // Convert each decoded Plaid transaction into the app's SwiftData Transaction model.
             for plaidTransaction in plaidTransactions {

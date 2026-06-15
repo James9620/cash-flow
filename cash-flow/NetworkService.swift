@@ -39,12 +39,14 @@ final class NetworkService {
         return decodedResponse.linkToken
     }
 
-    func exchangePublicToken(_ publicToken: String) async throws {
+    func exchangePublicToken(_ publicToken: String, userID: String) async throws {
         // Build the POST request that trades Plaid's temporary public_token for a server-side access token.
         var request = try makeRequest(path: "/exchange-public-token", method: "POST")
 
-        // The server expects this exact JSON shape: { "public_token": "..." }.
-        request.httpBody = try encoder.encode(ExchangePublicTokenRequest(publicToken: publicToken))
+        // The server stores the access token under this user ID.
+        request.httpBody = try encoder.encode(
+            ExchangePublicTokenRequest(publicToken: publicToken, userID: userID)
+        )
 
         // Send the public token to the backend.
         let (data, response) = try await session.data(for: request)
@@ -59,9 +61,16 @@ final class NetworkService {
         }
     }
 
-    func fetchTransactions() async throws -> [PlaidTransaction] {
-        // Build the GET request for the server route that returns Plaid transactions.
-        let request = try makeRequest(path: "/fetch-transactions", method: "GET")
+    func fetchTransactions(userID: String) async throws -> [PlaidTransaction] {
+        // The server uses user_id to look up the correct saved Plaid access token.
+        var components = URLComponents(string: ServerConfig.baseURL + "/fetch-transactions")
+        components?.queryItems = [URLQueryItem(name: "user_id", value: userID)]
+
+        guard let url = components?.url else {
+            throw NetworkServiceError.invalidURL(ServerConfig.baseURL + "/fetch-transactions")
+        }
+
+        let request = try makeRequest(url: url, method: "GET")
 
         // Ask the backend for the latest transactions linked to the saved Plaid access token.
         let (data, response) = try await session.data(for: request)
@@ -75,16 +84,23 @@ final class NetworkService {
     }
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
-        // Combine the shared Railway base URL with the specific backend endpoint path.
         guard let url = URL(string: ServerConfig.baseURL + path) else {
             throw NetworkServiceError.invalidURL(ServerConfig.baseURL + path)
         }
 
+        return try makeRequest(url: url, method: method)
+    }
+
+    private func makeRequest(url: URL, method: String) throws -> URLRequest {
         // Set up the request once so every endpoint uses the same JSON headers.
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        // The backend rejects protected routes without this shared secret.
+        request.setValue("Bearer \(ServerConfig.apiSecretKey)", forHTTPHeaderField: "Authorization")
+
         return request
     }
 
@@ -123,9 +139,11 @@ private struct CreateLinkTokenResponse: Decodable {
 private struct ExchangePublicTokenRequest: Encodable {
     // This property maps to the public_token key required by the Node backend.
     let publicToken: String
+    let userID: String
 
     enum CodingKeys: String, CodingKey {
         case publicToken = "public_token"
+        case userID = "user_id"
     }
 }
 

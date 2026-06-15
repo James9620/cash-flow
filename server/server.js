@@ -2,13 +2,12 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } = require('plaid');
+const { requireApiKey, requireUserId } = require('./auth');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const tokensFilePath = path.join(__dirname, 'tokens.json');
+let accessToken = null;
 
 app.use(cors());
 app.use(express.json());
@@ -25,11 +24,10 @@ const plaidConfig = new Configuration({
 const plaidClient = new PlaidApi(plaidConfig);
 
 // Called by the iOS app to get a temporary token that opens the Plaid bank-connection UI.
-app.post('/create-link-token', async (req, res) => {
+app.post('/create-link-token', requireApiKey, requireUserId, async (req, res) => {
   try {
-    const { user_id } = req.body;
     const response = await plaidClient.linkTokenCreate({
-      user: { client_user_id: user_id },
+      user: { client_user_id: req.userId },
       client_name: 'Cash Flow',
       products: [Products.Transactions],
       country_codes: [CountryCode.Us],
@@ -60,17 +58,23 @@ app.get('/oauth-redirect', (req, res) => {
 });
 
 // Called by the iOS app after the user connects their bank. Exchanges a short-lived public_token for a permanent access_token.
-app.post('/exchange-public-token', async (req, res) => {
+app.post('/exchange-public-token', requireApiKey, requireUserId, async (req, res) => {
   try {
     const { public_token } = req.body;
-    const response = await plaidClient.itemPublicTokenExchange({ public_token });
 
-    console.log('ACCESS TOKEN (save this):', response.data.access_token);
-    // Development only: store the access_token locally. Production should use a proper database.
-    fs.writeFileSync(
-      tokensFilePath,
-      JSON.stringify({ access_token: response.data.access_token }, null, 2)
-    );
+    if (typeof public_token !== 'string' || public_token.trim().length === 0) {
+      return res.status(400).json({ error: 'public_token is required.' });
+    }
+
+    const response = await plaidClient.itemPublicTokenExchange({
+      public_token: public_token.trim(),
+    });
+
+    // Store the access token in memory for this running server process.
+    accessToken = response.data.access_token;
+
+    // Log only the user ID, never the secret access token itself.
+    console.log(`Plaid access token saved for user ${req.userId}`);
 
     res.json({ success: true });
   } catch (error) {
@@ -79,19 +83,14 @@ app.post('/exchange-public-token', async (req, res) => {
 });
 
 // transactionsSync returns incremental transaction updates from Plaid and is Plaid's recommended approach for fetching transactions.
-app.get('/fetch-transactions', async (req, res) => {
+app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) => {
   try {
-    if (!fs.existsSync(tokensFilePath)) {
-      return res.status(400).json({ error: 'No access token found. Connect a bank first.' });
-    }
-
-    const tokens = JSON.parse(fs.readFileSync(tokensFilePath, 'utf8'));
-    if (!tokens.access_token) {
-      return res.status(400).json({ error: 'No access token found. Connect a bank first.' });
+    if (!accessToken) {
+      return res.status(400).json({ error: 'No access token — reconnect your bank.' });
     }
 
     const response = await plaidClient.transactionsSync({
-      access_token: tokens.access_token,
+      access_token: accessToken,
       count: 100,
     });
 
