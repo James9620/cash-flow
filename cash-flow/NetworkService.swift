@@ -61,7 +61,7 @@ final class NetworkService {
         }
     }
 
-    func fetchTransactions(userID: String) async throws -> [PlaidTransaction] {
+    func fetchTransactions(userID: String) async throws -> PlaidTransactionSync {
         // The server uses user_id to look up the correct saved Plaid access token.
         var components = URLComponents(string: ServerConfig.baseURL + "/fetch-transactions")
         components?.queryItems = [URLQueryItem(name: "user_id", value: userID)]
@@ -78,9 +78,8 @@ final class NetworkService {
         // Stop early if the server says the request failed.
         try validate(response: response, data: data)
 
-        // The server wraps the Plaid array in { "transactions": [...] }.
-        let decodedResponse = try decoder.decode(FetchTransactionsResponse.self, from: data)
-        return decodedResponse.transactions
+        // The server returns Plaid's transaction sync shape so the app can add, update, and delete local rows.
+        return try decoder.decode(PlaidTransactionSync.self, from: data)
     }
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
@@ -150,11 +149,6 @@ private struct ExchangePublicTokenRequest: Encodable {
 private struct ExchangePublicTokenResponse: Decodable {
     // The backend sends success true after it saves the exchanged access token.
     let success: Bool
-}
-
-private struct FetchTransactionsResponse: Decodable {
-    // The backend wraps Plaid's transaction list in this transactions field.
-    let transactions: [PlaidTransaction]
 }
 
 private struct ServerErrorResponse: Decodable {

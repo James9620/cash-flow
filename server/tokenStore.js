@@ -49,11 +49,13 @@ function getUserRecord(userId) {
   return store.users[userId] ?? null;
 }
 
-function saveAccessToken(userId, accessToken) {
+function saveAccessToken(userId, accessToken, itemId) {
   const store = readStore();
   store.users[userId] = {
     access_token: accessToken,
-    sync_cursor: store.users[userId]?.sync_cursor ?? null,
+    item_id: itemId ?? store.users[userId]?.item_id ?? null,
+    sync_cursor: null,
+    transactions_refresh_needed: false,
   };
   writeStore(store);
 }
@@ -64,6 +66,34 @@ function getAccessToken(userId) {
 
 function getSyncCursor(userId) {
   return getUserRecord(userId)?.sync_cursor ?? null;
+}
+
+function getUserIdForItemId(itemId) {
+  const store = readStore();
+
+  for (const [userId, record] of Object.entries(store.users)) {
+    if (record.item_id === itemId) {
+      return userId;
+    }
+  }
+
+  return null;
+}
+
+function markTransactionsRefreshNeeded(userId, isNeeded) {
+  const store = readStore();
+  const existing = store.users[userId];
+
+  if (!existing?.access_token) {
+    return false;
+  }
+
+  store.users[userId] = {
+    ...existing,
+    transactions_refresh_needed: isNeeded,
+  };
+  writeStore(store);
+  return true;
 }
 
 function saveSyncCursor(userId, syncCursor) {
@@ -77,6 +107,7 @@ function saveSyncCursor(userId, syncCursor) {
   store.users[userId] = {
     ...existing,
     sync_cursor: syncCursor,
+    transactions_refresh_needed: false,
   };
   writeStore(store);
   return true;
@@ -85,6 +116,8 @@ function saveSyncCursor(userId, syncCursor) {
 module.exports = {
   getAccessToken,
   getSyncCursor,
+  getUserIdForItemId,
+  markTransactionsRefreshNeeded,
   saveAccessToken,
   saveSyncCursor,
 };

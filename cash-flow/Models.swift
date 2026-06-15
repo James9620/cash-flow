@@ -136,16 +136,21 @@ final class IncomeEvent {
     // The date the money actually arrived in the user's account.
     var depositedAt: Date
 
+    // The Plaid transaction ID that created this income event, used to avoid counting the same deposit twice.
+    var plaidID: String? = nil
+
     init(
         id: UUID = UUID(),
         amount: Double,
         date: Date,
-        depositedAt: Date
+        depositedAt: Date,
+        plaidID: String? = nil
     ) {
         self.id = id
         self.amount = amount
         self.date = date
         self.depositedAt = depositedAt
+        self.plaidID = plaidID
     }
 }
 
@@ -153,6 +158,9 @@ final class IncomeEvent {
 final class UserSettings {
     // The percentage of income the user wants to route to savings.
     var savingsPercentage: Double
+
+    // The current amount available for discretionary spending after savings is set aside.
+    var discretionaryBalance: Double = 0
 
     // Whether the user has finished the first-run setup flow.
     var onboardingComplete: Bool
@@ -162,10 +170,12 @@ final class UserSettings {
 
     init(
         savingsPercentage: Double = 0,
+        discretionaryBalance: Double = 0,
         onboardingComplete: Bool = false,
         subscriptionStatus: SubscriptionStatus = .free
     ) {
         self.savingsPercentage = savingsPercentage
+        self.discretionaryBalance = discretionaryBalance
         self.onboardingComplete = onboardingComplete
         self.subscriptionStatus = subscriptionStatus
     }

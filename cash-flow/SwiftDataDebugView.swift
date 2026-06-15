@@ -13,6 +13,8 @@ struct SwiftDataDebugView: View {
 
     @Query(sort: \Widget.name) private var widgets: [Widget]
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
+    @Query(sort: \IncomeEvent.depositedAt, order: .reverse) private var incomeEvents: [IncomeEvent]
+    @Query private var userSettings: [UserSettings]
 
     var body: some View {
         NavigationStack {
@@ -52,6 +54,39 @@ struct SwiftDataDebugView: View {
                     } else {
                         ForEach(allTransactions) { transaction in
                             ImportedTransactionDebugRow(transaction: transaction)
+                        }
+                    }
+                }
+
+                Section("Income & Balance") {
+                    if let settings = userSettings.first {
+                        HStack {
+                            Text("Discretionary Balance")
+                            Spacer()
+                            Text(settings.discretionaryBalance, format: .currency(code: "USD"))
+                        }
+                    } else {
+                        Text("No user settings saved yet.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if incomeEvents.isEmpty {
+                        Text("No direct deposits detected yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(incomeEvents) { incomeEvent in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Direct Deposit")
+                                    Text(incomeEvent.depositedAt, format: .dateTime.year().month().day())
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text(incomeEvent.amount, format: .currency(code: "USD"))
+                            }
                         }
                     }
                 }

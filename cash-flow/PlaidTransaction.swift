@@ -25,6 +25,9 @@ struct PlaidTransaction: Codable {
     // Plaid may return a category path, such as ["Food and Drink", "Restaurants"].
     let category: [String]?
 
+    // Plaid's newer category object can help identify payroll or income deposits.
+    let personalFinanceCategory: PlaidPersonalFinanceCategory?
+
     enum CodingKeys: String, CodingKey {
         // The JSON key is snake_case, while the Swift property uses the usual camelCase style.
         case transactionID = "transaction_id"
@@ -32,5 +35,34 @@ struct PlaidTransaction: Codable {
         case amount
         case date
         case category
+        case personalFinanceCategory = "personal_finance_category"
     }
+}
+
+struct PlaidPersonalFinanceCategory: Codable {
+    // Broad category name, such as INCOME.
+    let primary: String?
+
+    // More specific category name, such as INCOME_WAGES.
+    let detailed: String?
+}
+
+struct PlaidRemovedTransaction: Codable {
+    // Plaid sends removed transaction IDs separately from full transaction objects.
+    let transactionID: String
+
+    enum CodingKeys: String, CodingKey {
+        case transactionID = "transaction_id"
+    }
+}
+
+struct PlaidTransactionSync: Codable {
+    // New transactions Plaid has not sent to this server before.
+    let added: [PlaidTransaction]
+
+    // Existing transactions whose amount, merchant, date, or category changed.
+    let modified: [PlaidTransaction]
+
+    // Transactions Plaid says should be removed from local storage.
+    let removed: [PlaidRemovedTransaction]
 }
