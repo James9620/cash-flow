@@ -106,19 +106,38 @@ final class BankConnectionViewModel {
         }
     }
 
+    @MainActor
+    func loadTransactionsIfRefreshNeeded(context: ModelContext) async {
+        do {
+            // The server flips this flag when Plaid sends a transaction webhook for this user.
+            let refreshNeeded = try await networkService.transactionsRefreshNeeded(
+                userID: UserIdentity.currentUserID
+            )
+
+            guard refreshNeeded else {
+                return
+            }
+
+            await loadTransactions(context: context)
+        } catch {
+            // A failed background status check should be visible, but it should not erase saved transactions.
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func upsertTransaction(_ plaidTransaction: PlaidTransaction, context: ModelContext) throws {
         if let existingTransaction = try transaction(with: plaidTransaction.transactionID, context: context) {
             // Plaid can correct pending transactions later, so keep the local copy in sync.
             existingTransaction.amount = plaidTransaction.amount
             existingTransaction.date = date(from: plaidTransaction.date)
-            existingTransaction.merchant = plaidTransaction.name
+            existingTransaction.merchant = merchantName(from: plaidTransaction)
             existingTransaction.category = category(from: plaidTransaction)
         } else {
             // Insert the Plaid transaction when this is the first time the app has seen its ID.
             let transaction = Transaction(
                 amount: plaidTransaction.amount,
                 date: date(from: plaidTransaction.date),
-                merchant: plaidTransaction.name,
+                merchant: merchantName(from: plaidTransaction),
                 category: category(from: plaidTransaction),
                 plaidID: plaidTransaction.transactionID
             )
@@ -213,6 +232,17 @@ final class BankConnectionViewModel {
         let settings = UserSettings()
         context.insert(settings)
         return settings
+    }
+
+    private func merchantName(from plaidTransaction: PlaidTransaction) -> String {
+        // Prefer Plaid's cleaned merchant name when available, then fall back to the raw transaction name.
+        let merchantName = plaidTransaction.merchantName?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let merchantName, !merchantName.isEmpty {
+            return merchantName
+        }
+
+        return plaidTransaction.name
     }
 
     private func category(from plaidTransaction: PlaidTransaction) -> String {

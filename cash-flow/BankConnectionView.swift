@@ -46,9 +46,23 @@ struct BankConnectionView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.isLoading)
                 } else {
-                    // Any existing transaction means the app has already imported bank data.
-                    Text("Bank connected!")
-                        .foregroundStyle(.green)
+                    VStack(spacing: 12) {
+                        // Any existing transaction means the app has already imported bank data.
+                        Text("Bank connected!")
+                            .foregroundStyle(.green)
+
+                        Button {
+                            // Let the user manually run Plaid transaction sync without reconnecting their bank.
+                            Task {
+                                await viewModel.loadTransactions(context: modelContext)
+                            }
+                        } label: {
+                            Text("Refresh Transactions")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(viewModel.isLoading)
+                    }
                 }
 
                 if viewModel.isLoading {
@@ -65,6 +79,14 @@ struct BankConnectionView: View {
             }
             .padding()
             .navigationTitle("Bank")
+        }
+        .task(id: transactions.count) {
+            guard !transactions.isEmpty else {
+                return
+            }
+
+            // When this screen appears, quietly refresh only if Plaid has sent the server a webhook.
+            await viewModel.loadTransactionsIfRefreshNeeded(context: modelContext)
         }
         .sheet(isPresented: $showingPlaidLink) {
             if let linkToken {

@@ -68,6 +68,10 @@ function getSyncCursor(userId) {
   return getUserRecord(userId)?.sync_cursor ?? null;
 }
 
+function getTransactionsRefreshNeeded(userId) {
+  return getUserRecord(userId)?.transactions_refresh_needed ?? false;
+}
+
 function getUserIdForItemId(itemId) {
   const store = readStore();
 
@@ -116,6 +120,7 @@ function saveSyncCursor(userId, syncCursor) {
 module.exports = {
   getAccessToken,
   getSyncCursor,
+  getTransactionsRefreshNeeded,
   getUserIdForItemId,
   markTransactionsRefreshNeeded,
   saveAccessToken,

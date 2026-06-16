@@ -16,6 +16,9 @@ struct PlaidTransaction: Codable {
     // The merchant or transaction name returned by Plaid.
     let name: String
 
+    // Plaid sometimes provides a cleaner merchant name separately from the raw transaction name.
+    let merchantName: String?
+
     // Plaid's amount value for the transaction.
     let amount: Double
 
@@ -32,6 +35,7 @@ struct PlaidTransaction: Codable {
         // The JSON key is snake_case, while the Swift property uses the usual camelCase style.
         case transactionID = "transaction_id"
         case name
+        case merchantName = "merchant_name"
         case amount
         case date
         case category
@@ -65,4 +69,14 @@ struct PlaidTransactionSync: Codable {
 
     // Transactions Plaid says should be removed from local storage.
     let removed: [PlaidRemovedTransaction]
+
+    // Plaid's status for the current transaction pull, useful for debugging early sandbox syncs.
+    let transactionsUpdateStatus: String?
+
+    enum CodingKeys: String, CodingKey {
+        case added
+        case modified
+        case removed
+        case transactionsUpdateStatus = "transactions_update_status"
+    }
 }

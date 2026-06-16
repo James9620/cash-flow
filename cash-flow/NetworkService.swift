@@ -82,6 +82,28 @@ final class NetworkService {
         return try decoder.decode(PlaidTransactionSync.self, from: data)
     }
 
+    func transactionsRefreshNeeded(userID: String) async throws -> Bool {
+        // Ask the backend whether a Plaid webhook has marked this user's transactions as stale.
+        var components = URLComponents(string: ServerConfig.baseURL + "/transactions-refresh-status")
+        components?.queryItems = [URLQueryItem(name: "user_id", value: userID)]
+
+        guard let url = components?.url else {
+            throw NetworkServiceError.invalidURL(ServerConfig.baseURL + "/transactions-refresh-status")
+        }
+
+        let request = try makeRequest(url: url, method: "GET")
+
+        // Send the status check to the backend.
+        let (data, response) = try await session.data(for: request)
+
+        // Stop early if the backend rejects the request.
+        try validate(response: response, data: data)
+
+        // The server returns true only after Plaid tells it new transaction data may be available.
+        let decodedResponse = try decoder.decode(TransactionsRefreshStatusResponse.self, from: data)
+        return decodedResponse.refreshNeeded
+    }
+
     private func makeRequest(path: String, method: String) throws -> URLRequest {
         guard let url = URL(string: ServerConfig.baseURL + path) else {
             throw NetworkServiceError.invalidURL(ServerConfig.baseURL + path)
@@ -149,6 +171,15 @@ private struct ExchangePublicTokenRequest: Encodable {
 private struct ExchangePublicTokenResponse: Decodable {
     // The backend sends success true after it saves the exchanged access token.
     let success: Bool
+}
+
+private struct TransactionsRefreshStatusResponse: Decodable {
+    // This property maps to the refresh_needed key returned by the backend.
+    let refreshNeeded: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case refreshNeeded = "refresh_needed"
+    }
 }
 
 private struct ServerErrorResponse: Decodable {

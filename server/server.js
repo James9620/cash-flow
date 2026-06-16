@@ -7,6 +7,7 @@ const { requireApiKey, requireUserId } = require('./auth');
 const {
   getAccessToken,
   getSyncCursor,
+  getTransactionsRefreshNeeded,
   getUserIdForItemId,
   markTransactionsRefreshNeeded,
   saveAccessToken,
@@ -15,9 +16,17 @@ const {
 
 const app = express();
 const port = process.env.PORT || 3000;
-const syncPageSize = 100;
+const syncPageSize = 500;
+const maxSyncAttempts = 2;
 const plaidRedirectUri = process.env.PLAID_REDIRECT_URI || 'https://cash-flow-production-341d.up.railway.app/oauth-redirect';
 const plaidWebhookUrl = process.env.PLAID_WEBHOOK_URL || 'https://cash-flow-production-341d.up.railway.app/webhook';
+const transactionUpdateWebhookCodes = new Set([
+  'SYNC_UPDATES_AVAILABLE',
+  'INITIAL_UPDATE',
+  'HISTORICAL_UPDATE',
+  'DEFAULT_UPDATE',
+  'TRANSACTIONS_REMOVED',
+]);
 
 app.use(cors());
 app.use(express.json());
@@ -32,6 +41,63 @@ const plaidConfig = new Configuration({
   },
 });
 const plaidClient = new PlaidApi(plaidConfig);
+
+function plaidErrorCode(error) {
+  return error?.response?.data?.error_code ?? error?.data?.error_code ?? error?.error_code;
+}
+
+async function fetchTransactionUpdates(accessToken, startingCursor, attempt = 1) {
+  let nextCursor = startingCursor;
+  let hasMore = true;
+  const added = [];
+  const modified = [];
+  const removed = [];
+  let transactionsUpdateStatus = null;
+
+  try {
+    // Plaid may paginate transaction sync results, so keep asking until has_more is false.
+    while (hasMore) {
+      const request = {
+        access_token: accessToken,
+        count: syncPageSize,
+      };
+
+      if (nextCursor) {
+        request.cursor = nextCursor;
+      }
+
+      const response = await plaidClient.transactionsSync(request);
+      const data = response.data;
+
+      added.push(...data.added);
+      modified.push(...data.modified);
+      removed.push(...data.removed);
+
+      nextCursor = data.next_cursor;
+      hasMore = data.has_more;
+      transactionsUpdateStatus = data.transactions_update_status ?? transactionsUpdateStatus;
+    }
+
+    return {
+      added,
+      modified,
+      removed,
+      nextCursor,
+      transactionsUpdateStatus,
+    };
+  } catch (error) {
+    const shouldRestartSync =
+      plaidErrorCode(error) === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' &&
+      attempt < maxSyncAttempts;
+
+    if (shouldRestartSync) {
+      // If Plaid data changes during paging, Plaid says to restart from the cursor we began with.
+      return fetchTransactionUpdates(accessToken, startingCursor, attempt + 1);
+    }
+
+    throw error;
+  }
+}
 
 // Called by the iOS app to get a temporary token that opens the Plaid bank-connection UI.
 app.post('/create-link-token', requireApiKey, requireUserId, async (req, res) => {
@@ -102,35 +168,17 @@ app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) =>
       return res.status(400).json({ error: 'No access token — reconnect your bank.' });
     }
 
-    let nextCursor = getSyncCursor(req.userId);
-    let hasMore = true;
-    const added = [];
-    const modified = [];
-    const removed = [];
-
-    // Plaid may paginate transaction sync results, so keep asking until has_more is false.
-    while (hasMore) {
-      const request = {
-        access_token: accessToken,
-        count: syncPageSize,
-      };
-
-      if (nextCursor) {
-        request.cursor = nextCursor;
-      }
-
-      const response = await plaidClient.transactionsSync(request);
-      const data = response.data;
-
-      added.push(...data.added);
-      modified.push(...data.modified);
-      removed.push(...data.removed);
-
-      nextCursor = data.next_cursor;
-      hasMore = data.has_more;
-    }
+    const startingCursor = getSyncCursor(req.userId);
+    const {
+      added,
+      modified,
+      removed,
+      nextCursor,
+      transactionsUpdateStatus,
+    } = await fetchTransactionUpdates(accessToken, startingCursor);
 
     if (nextCursor) {
+      // Save the cursor only after every page was fetched successfully.
       saveSyncCursor(req.userId, nextCursor);
     }
 
@@ -141,17 +189,26 @@ app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) =>
       modified,
       removed,
       next_cursor: nextCursor,
+      transactions_update_status: transactionsUpdateStatus,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// Lets the iOS app check whether a Plaid webhook has marked transactions as stale.
+app.get('/transactions-refresh-status', requireApiKey, requireUserId, (req, res) => {
+  res.json({ refresh_needed: getTransactionsRefreshNeeded(req.userId) });
+});
+
 // Receives notifications from Plaid when new transaction data is available.
 app.post('/webhook', (req, res) => {
   // Before production, verify Plaid's webhook signature so only Plaid can trigger this route.
   console.log('PLAID WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
-  if (req.body.webhook_type === 'TRANSACTIONS') {
+  if (
+    req.body.webhook_type === 'TRANSACTIONS' &&
+    transactionUpdateWebhookCodes.has(req.body.webhook_code)
+  ) {
     const userId = getUserIdForItemId(req.body.item_id);
 
     if (userId) {
