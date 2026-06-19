@@ -9,16 +9,78 @@
 /* Begin PBXBuildFile section */
 		BB5F94112FDF4635000B4503 /* LinkKit in Frameworks */ = {isa = PBXBuildFile; productRef = BB5F94102FDF4635000B4503 /* LinkKit */; };
 		BB5F94132FDF4636000B4503 /* LinkKitObjC in Frameworks */ = {isa = PBXBuildFile; productRef = BB5F94122FDF4636000B4503 /* LinkKitObjC */; };
+		BB7FBD162FE510EE00159058 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB7FBD152FE510ED00159058 /* WidgetKit.framework */; };
+		BB7FBD182FE510EE00159058 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB7FBD172FE510EE00159058 /* SwiftUI.framework */; };
+		BB7FBD292FE510F000159058 /* CashFlowWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB7FBD132FE510ED00159058 /* CashFlowWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BB7FBD272FE510F000159058 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB5F93F42FDC9E17000B4503 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB7FBD122FE510ED00159058;
+			remoteInfo = CashFlowWidgetsExtension;
+		};
+		BB7FBD382FE5123700159058 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB5F93F42FDC9E17000B4503 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB5F93FB2FDC9E17000B4503;
+			remoteInfo = "cash-flow";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB7FBD2E2FE510F000159058 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB7FBD292FE510F000159058 /* CashFlowWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		BB5F93FC2FDC9E17000B4503 /* cash-flow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "cash-flow.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB7FBD132FE510ED00159058 /* CashFlowWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CashFlowWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB7FBD152FE510ED00159058 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		BB7FBD172FE510EE00159058 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BB7FBD2F2FE5118000159058 /* CashFlowWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CashFlowWidgetsExtension.entitlements; sourceTree = "<group>"; };
+		BB7FBD342FE5123700159058 /* CashFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CashFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BB7FBD2A2FE510F000159058 /* Exceptions for "CashFlowWidgets" folder in "CashFlowWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BB7FBD122FE510ED00159058 /* CashFlowWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BB5F93FE2FDC9E17000B4503 /* cash-flow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "cash-flow";
+			sourceTree = "<group>";
+		};
+		BB7FBD192FE510EE00159058 /* CashFlowWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BB7FBD2A2FE510F000159058 /* Exceptions for "CashFlowWidgets" folder in "CashFlowWidgetsExtension" target */,
+			);
+			path = CashFlowWidgets;
+			sourceTree = "<group>";
+		};
+		BB7FBD352FE5123700159058 /* CashFlowTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CashFlowTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -33,13 +95,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB7FBD102FE510ED00159058 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB7FBD182FE510EE00159058 /* SwiftUI.framework in Frameworks */,
+				BB7FBD162FE510EE00159058 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB7FBD312FE5123700159058 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		BB5F93F32FDC9E17000B4503 = {
 			isa = PBXGroup;
 			children = (
+				BB7FBD2F2FE5118000159058 /* CashFlowWidgetsExtension.entitlements */,
 				BB5F93FE2FDC9E17000B4503 /* cash-flow */,
+				BB7FBD192FE510EE00159058 /* CashFlowWidgets */,
+				BB7FBD352FE5123700159058 /* CashFlowTests */,
+				BB7FBD142FE510ED00159058 /* Frameworks */,
 				BB5F93FD2FDC9E17000B4503 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,8 +130,19 @@
 			isa = PBXGroup;
 			children = (
 				BB5F93FC2FDC9E17000B4503 /* cash-flow.app */,
+				BB7FBD132FE510ED00159058 /* CashFlowWidgetsExtension.appex */,
+				BB7FBD342FE5123700159058 /* CashFlowTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BB7FBD142FE510ED00159058 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BB7FBD152FE510ED00159058 /* WidgetKit.framework */,
+				BB7FBD172FE510EE00159058 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -62,10 +155,12 @@
 				BB5F93F82FDC9E17000B4503 /* Sources */,
 				BB5F93F92FDC9E17000B4503 /* Frameworks */,
 				BB5F93FA2FDC9E17000B4503 /* Resources */,
+				BB7FBD2E2FE510F000159058 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB7FBD282FE510F000159058 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BB5F93FE2FDC9E17000B4503 /* cash-flow */,
@@ -79,6 +174,51 @@
 			productReference = BB5F93FC2FDC9E17000B4503 /* cash-flow.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BB7FBD122FE510ED00159058 /* CashFlowWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB7FBD2B2FE510F000159058 /* Build configuration list for PBXNativeTarget "CashFlowWidgetsExtension" */;
+			buildPhases = (
+				BB7FBD0F2FE510ED00159058 /* Sources */,
+				BB7FBD102FE510ED00159058 /* Frameworks */,
+				BB7FBD112FE510ED00159058 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB7FBD192FE510EE00159058 /* CashFlowWidgets */,
+			);
+			name = CashFlowWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = CashFlowWidgetsExtension;
+			productReference = BB7FBD132FE510ED00159058 /* CashFlowWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		BB7FBD332FE5123700159058 /* CashFlowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB7FBD3A2FE5123700159058 /* Build configuration list for PBXNativeTarget "CashFlowTests" */;
+			buildPhases = (
+				BB7FBD302FE5123700159058 /* Sources */,
+				BB7FBD312FE5123700159058 /* Frameworks */,
+				BB7FBD322FE5123700159058 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BB7FBD392FE5123700159058 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				BB7FBD352FE5123700159058 /* CashFlowTests */,
+			);
+			name = CashFlowTests;
+			packageProductDependencies = (
+			);
+			productName = CashFlowTests;
+			productReference = BB7FBD342FE5123700159058 /* CashFlowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -91,6 +231,13 @@
 				TargetAttributes = {
 					BB5F93FB2FDC9E17000B4503 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					BB7FBD122FE510ED00159058 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					BB7FBD332FE5123700159058 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = BB5F93FB2FDC9E17000B4503;
 					};
 				};
 			};
@@ -112,12 +259,28 @@
 			projectRoot = "";
 			targets = (
 				BB5F93FB2FDC9E17000B4503 /* cash-flow */,
+				BB7FBD122FE510ED00159058 /* CashFlowWidgetsExtension */,
+				BB7FBD332FE5123700159058 /* CashFlowTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		BB5F93FA2FDC9E17000B4503 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB7FBD112FE510ED00159058 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB7FBD322FE5123700159058 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -134,7 +297,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB7FBD0F2FE510ED00159058 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB7FBD302FE5123700159058 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BB7FBD282FE510F000159058 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB7FBD122FE510ED00159058 /* CashFlowWidgetsExtension */;
+			targetProxy = BB7FBD272FE510F000159058 /* PBXContainerItemProxy */;
+		};
+		BB7FBD392FE5123700159058 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB5F93FB2FDC9E17000B4503 /* cash-flow */;
+			targetProxy = BB7FBD382FE5123700159058 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		BB5F94052FDC9E1A000B4503 /* Debug */ = {
@@ -263,8 +453,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+					"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
@@ -307,8 +498,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+					GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+					"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
@@ -339,6 +531,120 @@
 			};
 			name = Release;
 		};
+		BB7FBD2C2FE510F000159058 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CashFlowWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ABUJQYZWDY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CashFlowWidgets/Info.plist;
+					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jameslarkin.cashflow.CashFlowWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB7FBD2D2FE510F000159058 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CashFlowWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ABUJQYZWDY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CashFlowWidgets/Info.plist;
+					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jameslarkin.cashflow.CashFlowWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		BB7FBD3B2FE5123700159058 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ABUJQYZWDY;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jameslarkin.cashflow.CashFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cash-flow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cash-flow";
+			};
+			name = Debug;
+		};
+		BB7FBD3C2FE5123700159058 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ABUJQYZWDY;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jameslarkin.cashflow.CashFlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/cash-flow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/cash-flow";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -356,6 +662,24 @@
 			buildConfigurations = (
 				BB5F94082FDC9E1A000B4503 /* Debug */,
 				BB5F94092FDC9E1A000B4503 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB7FBD2B2FE510F000159058 /* Build configuration list for PBXNativeTarget "CashFlowWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB7FBD2C2FE510F000159058 /* Debug */,
+				BB7FBD2D2FE510F000159058 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB7FBD3A2FE5123700159058 /* Build configuration list for PBXNativeTarget "CashFlowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB7FBD3B2FE5123700159058 /* Debug */,
+				BB7FBD3C2FE5123700159058 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

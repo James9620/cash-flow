@@ -120,7 +120,13 @@ final class NetworkService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         // The backend rejects protected routes without this shared secret.
-        request.setValue("Bearer \(ServerConfig.apiSecretKey)", forHTTPHeaderField: "Authorization")
+        let apiSecretKey = ServerConfig.apiSecretKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !apiSecretKey.isEmpty else {
+            throw NetworkServiceError.missingAPISecret
+        }
+
+        request.setValue("Bearer \(apiSecretKey)", forHTTPHeaderField: "Authorization")
 
         return request
     }
@@ -192,6 +198,7 @@ private enum NetworkServiceError: LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int, message: String?)
     case exchangeFailed
+    case missingAPISecret
 
     var errorDescription: String? {
         switch self {
@@ -203,6 +210,8 @@ private enum NetworkServiceError: LocalizedError {
             return message ?? "The server returned status code \(statusCode)."
         case .exchangeFailed:
             return "The server did not confirm the public token exchange."
+        case .missingAPISecret:
+            return "Missing CASH_FLOW_API_SECRET_KEY. Add it to your local run environment before connecting a bank."
         }
     }
 }

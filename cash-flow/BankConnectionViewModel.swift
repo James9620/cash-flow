@@ -25,7 +25,7 @@ final class BankConnectionViewModel {
     }
 
     @MainActor
-    func connectBank() async -> String? {
+    func connectBank(context: ModelContext) async -> String? {
         // Start a loading state before asking the backend for a Plaid Link token.
         isLoading = true
         errorMessage = nil
@@ -41,6 +41,7 @@ final class BankConnectionViewModel {
         } catch {
             // Store a readable message so the SwiftUI view can show the failure.
             errorMessage = error.localizedDescription
+            markBankFailureIfPossible(error, context: context)
             return nil
         }
     }
@@ -57,9 +58,13 @@ final class BankConnectionViewModel {
                 publicToken,
                 userID: UserIdentity.currentUserID
             )
+
+            try markBankConnected(context: context)
+            try saveAndExportWidgetSnapshot(context: context)
         } catch {
             // If the exchange fails, there is no saved access token to fetch transactions with.
             errorMessage = error.localizedDescription
+            markBankFailureIfPossible(error, context: context)
             isLoading = false
             return
         }
@@ -99,10 +104,12 @@ final class BankConnectionViewModel {
             }
 
             // Save once after all additions, updates, removals, and income calculations are complete.
-            try context.save()
+            try markBankSyncSucceeded(context: context)
+            try saveAndExportWidgetSnapshot(context: context)
         } catch {
             // Store a readable message so the SwiftUI view can show the failure.
             errorMessage = error.localizedDescription
+            markBankFailureIfPossible(error, context: context)
         }
     }
 
@@ -122,24 +129,139 @@ final class BankConnectionViewModel {
         } catch {
             // A failed background status check should be visible, but it should not erase saved transactions.
             errorMessage = error.localizedDescription
+            markBankFailureIfPossible(error, context: context)
         }
     }
 
+    @MainActor
+    func resetLocalBankData(context: ModelContext) {
+        do {
+            // Remove imported bank rows from this simulator so the app can show the connect button again.
+            try deleteAllTransactions(context: context)
+            try deleteAllIncomeEvents(context: context)
+
+            // Keep the user's settings row, but clear money that came from the removed bank data.
+            if let settings = try existingUserSettings(context: context) {
+                settings.discretionaryBalance = 0
+            }
+
+            try markBankNotConnected(context: context)
+            try saveAndExportWidgetSnapshot(context: context)
+            errorMessage = nil
+        } catch {
+            // Show reset problems in the same place as network and import errors.
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func markBankConnected(context: ModelContext) throws {
+        let connection = try bankConnection(context: context)
+        let now = Date()
+
+        connection.status = .connected
+        connection.connectedAt = now
+        connection.lastErrorMessage = nil
+    }
+
+    @MainActor
+    private func markBankSyncSucceeded(context: ModelContext) throws {
+        let connection = try bankConnection(context: context)
+        let now = Date()
+
+        connection.status = .connected
+        connection.lastSyncedAt = now
+        connection.lastErrorMessage = nil
+
+        if connection.connectedAt == nil {
+            // Older local installs may sync before this status row existed, so fill this date gently.
+            connection.connectedAt = now
+        }
+    }
+
+    @MainActor
+    private func markBankNotConnected(context: ModelContext) throws {
+        let connection = try bankConnection(context: context)
+
+        connection.status = .notConnected
+        connection.connectedAt = nil
+        connection.lastSyncedAt = nil
+        connection.lastErrorMessage = nil
+    }
+
+    @MainActor
+    private func markBankFailureIfPossible(_ error: Error, context: ModelContext) {
+        do {
+            let connection = try bankConnection(context: context)
+
+            connection.status = status(for: error)
+            connection.lastErrorMessage = error.localizedDescription
+            try saveAndExportWidgetSnapshot(context: context)
+        } catch {
+            // If saving the recovery state fails, keep the original bank error visible to the user.
+            errorMessage = errorMessage ?? error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func bankConnection(context: ModelContext) throws -> BankConnection {
+        var descriptor = FetchDescriptor<BankConnection>()
+        descriptor.fetchLimit = 1
+
+        if let existingConnection = try context.fetch(descriptor).first {
+            return existingConnection
+        }
+
+        // Create one status row on demand so the app no longer uses transaction count as connection state.
+        let connection = BankConnection()
+        context.insert(connection)
+        return connection
+    }
+
+    @MainActor
+    private func saveAndExportWidgetSnapshot(context: ModelContext) throws {
+        try context.save()
+
+        // Widget export is best-effort here; bank sync should not fail just because the App Group is not enabled yet.
+        try? WidgetSnapshotExporter().export(context: context)
+    }
+
+    private func status(for error: Error) -> BankConnectionStatus {
+        let message = error.localizedDescription.lowercased()
+        let reconnectKeywords = [
+            "access token",
+            "credentials",
+            "expired",
+            "item_login_required",
+            "login_required",
+            "reauth",
+            "reconnect"
+        ]
+
+        if reconnectKeywords.contains(where: { message.contains($0) }) {
+            return .needsReconnect
+        }
+
+        return .error
+    }
+
     private func upsertTransaction(_ plaidTransaction: PlaidTransaction, context: ModelContext) throws {
+        let importedValues = PlaidTransactionImportLogic.transactionValues(from: plaidTransaction)
+
         if let existingTransaction = try transaction(with: plaidTransaction.transactionID, context: context) {
             // Plaid can correct pending transactions later, so keep the local copy in sync.
-            existingTransaction.amount = plaidTransaction.amount
-            existingTransaction.date = date(from: plaidTransaction.date)
-            existingTransaction.merchant = merchantName(from: plaidTransaction)
-            existingTransaction.category = category(from: plaidTransaction)
+            existingTransaction.amount = importedValues.amount
+            existingTransaction.date = importedValues.date
+            existingTransaction.merchant = importedValues.merchant
+            existingTransaction.category = importedValues.category
         } else {
             // Insert the Plaid transaction when this is the first time the app has seen its ID.
             let transaction = Transaction(
-                amount: plaidTransaction.amount,
-                date: date(from: plaidTransaction.date),
-                merchant: merchantName(from: plaidTransaction),
-                category: category(from: plaidTransaction),
-                plaidID: plaidTransaction.transactionID
+                amount: importedValues.amount,
+                date: importedValues.date,
+                merchant: importedValues.merchant,
+                category: importedValues.category,
+                plaidID: importedValues.plaidID
             )
 
             context.insert(transaction)
@@ -156,7 +278,10 @@ final class BankConnectionViewModel {
         if let incomeEvent = try incomeEvent(with: removedTransaction.transactionID, context: context) {
             // If Plaid removes a paycheck transaction, subtract the discretionary portion that was previously added.
             let settings = try userSettings(context: context)
-            settings.discretionaryBalance -= discretionaryAmount(fromIncome: incomeEvent.amount, settings: settings)
+            settings.discretionaryBalance += PlaidTransactionImportLogic.balanceDeltaForRemovedIncome(
+                amount: incomeEvent.amount,
+                savingsPercentage: settings.savingsPercentage
+            )
             context.delete(incomeEvent)
         }
     }
@@ -164,39 +289,48 @@ final class BankConnectionViewModel {
     private func upsertIncomeEvent(from plaidTransaction: PlaidTransaction, context: ModelContext) throws {
         let existingIncomeEvent = try incomeEvent(with: plaidTransaction.transactionID, context: context)
 
-        guard isDirectDeposit(plaidTransaction) else {
-            // If a corrected Plaid transaction is no longer income, undo the earlier income event.
-            if let existingIncomeEvent {
-                let settings = try userSettings(context: context)
-                settings.discretionaryBalance -= discretionaryAmount(fromIncome: existingIncomeEvent.amount, settings: settings)
-                context.delete(existingIncomeEvent)
-            }
-
+        // If this is not income and there is no previous income event, avoid creating a settings row just to do nothing.
+        guard PlaidTransactionImportLogic.isDirectDeposit(plaidTransaction) || existingIncomeEvent != nil else {
             return
         }
 
         let settings = try userSettings(context: context)
-        let incomeAmount = abs(plaidTransaction.amount)
-        let depositedAt = date(from: plaidTransaction.date)
-        let newDiscretionaryAmount = discretionaryAmount(fromIncome: incomeAmount, settings: settings)
 
-        if let existingIncomeEvent {
-            // Adjust the balance by the difference so a Plaid correction does not double-count the deposit.
-            let oldDiscretionaryAmount = discretionaryAmount(fromIncome: existingIncomeEvent.amount, settings: settings)
-            existingIncomeEvent.amount = incomeAmount
-            existingIncomeEvent.date = depositedAt
-            existingIncomeEvent.depositedAt = depositedAt
-            settings.discretionaryBalance += newDiscretionaryAmount - oldDiscretionaryAmount
-        } else {
+        let plan = PlaidTransactionImportLogic.incomeEventPlan(
+            for: plaidTransaction,
+            existingIncomeAmount: existingIncomeEvent?.amount,
+            savingsPercentage: settings.savingsPercentage
+        )
+
+        switch plan {
+        case .noChange:
+            return
+
+        case let .removeExisting(balanceDelta):
+            // If a corrected Plaid transaction is no longer income, undo the earlier income event.
+            if let existingIncomeEvent {
+                settings.discretionaryBalance += balanceDelta
+                context.delete(existingIncomeEvent)
+            }
+
+        case let .upsert(values, balanceDelta):
+            if let existingIncomeEvent {
+                existingIncomeEvent.amount = values.amount
+                existingIncomeEvent.date = values.date
+                existingIncomeEvent.depositedAt = values.depositedAt
+                settings.discretionaryBalance += balanceDelta
+                return
+            }
+
             let incomeEvent = IncomeEvent(
-                amount: incomeAmount,
-                date: depositedAt,
-                depositedAt: depositedAt,
-                plaidID: plaidTransaction.transactionID
+                amount: values.amount,
+                date: values.date,
+                depositedAt: values.depositedAt,
+                plaidID: values.plaidID
             )
 
             context.insert(incomeEvent)
-            settings.discretionaryBalance += newDiscretionaryAmount
+            settings.discretionaryBalance += balanceDelta
         }
     }
 
@@ -234,67 +368,31 @@ final class BankConnectionViewModel {
         return settings
     }
 
-    private func merchantName(from plaidTransaction: PlaidTransaction) -> String {
-        // Prefer Plaid's cleaned merchant name when available, then fall back to the raw transaction name.
-        let merchantName = plaidTransaction.merchantName?.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func existingUserSettings(context: ModelContext) throws -> UserSettings? {
+        var descriptor = FetchDescriptor<UserSettings>()
+        descriptor.fetchLimit = 1
 
-        if let merchantName, !merchantName.isEmpty {
-            return merchantName
+        return try context.fetch(descriptor).first
+    }
+
+    private func deleteAllTransactions(context: ModelContext) throws {
+        // Fetch first, then delete each row. This is easy to understand and safe for the small dev database.
+        let descriptor = FetchDescriptor<Transaction>()
+        let transactions = try context.fetch(descriptor)
+
+        for transaction in transactions {
+            context.delete(transaction)
         }
-
-        return plaidTransaction.name
     }
 
-    private func category(from plaidTransaction: PlaidTransaction) -> String {
-        // Use Plaid's most specific legacy category when available, then fall back to newer category labels.
-        plaidTransaction.category?.last
-            ?? plaidTransaction.personalFinanceCategory?.detailed
-            ?? plaidTransaction.personalFinanceCategory?.primary
-            ?? "Uncategorized"
-    }
+    private func deleteAllIncomeEvents(context: ModelContext) throws {
+        // Income events created from Plaid deposits should be reset with the imported transactions.
+        let descriptor = FetchDescriptor<IncomeEvent>()
+        let incomeEvents = try context.fetch(descriptor)
 
-    private func isDirectDeposit(_ plaidTransaction: PlaidTransaction) -> Bool {
-        // Plaid records incoming money as a negative amount, while purchases are usually positive.
-        guard plaidTransaction.amount < 0 else {
-            return false
+        for incomeEvent in incomeEvents {
+            context.delete(incomeEvent)
         }
-
-        let searchableText = [
-            plaidTransaction.name,
-            plaidTransaction.category?.joined(separator: " "),
-            plaidTransaction.personalFinanceCategory?.primary,
-            plaidTransaction.personalFinanceCategory?.detailed
-        ]
-        .compactMap { $0 }
-        .joined(separator: " ")
-        .lowercased()
-
-        let incomeKeywords = [
-            "direct deposit",
-            "income",
-            "income_wages",
-            "payroll",
-            "salary",
-            "wage"
-        ]
-
-        return incomeKeywords.contains { searchableText.contains($0) }
     }
 
-    private func discretionaryAmount(fromIncome incomeAmount: Double, settings: UserSettings) -> Double {
-        // Clamp the savings percentage so a bad setting cannot produce a negative or over-100% balance.
-        let savingsPercentage = min(max(settings.savingsPercentage, 0), 100)
-        return incomeAmount * ((100 - savingsPercentage) / 100)
-    }
-
-    private func date(from plaidDate: String) -> Date {
-        // Plaid transaction dates are plain calendar dates in yyyy-MM-dd format.
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .iso8601)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        // If parsing ever fails, use the current date so the import can still complete.
-        return formatter.date(from: plaidDate) ?? Date()
-    }
 }

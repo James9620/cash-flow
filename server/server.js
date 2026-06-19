@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } = require('plaid');
 const { requireApiKey, requireUserId } = require('./auth');
+const { createPlaidWebhookVerifier } = require('./webhookVerifier');
 const {
   getAccessToken,
   getSyncCursor,
@@ -29,7 +30,14 @@ const transactionUpdateWebhookCodes = new Set([
 ]);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buffer) => {
+    if (req.originalUrl.startsWith('/webhook')) {
+      // Plaid signs the exact request body, so keep the raw bytes before JSON parsing.
+      req.rawBody = Buffer.from(buffer);
+    }
+  },
+}));
 
 const plaidConfig = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV],
@@ -41,6 +49,7 @@ const plaidConfig = new Configuration({
   },
 });
 const plaidClient = new PlaidApi(plaidConfig);
+const verifyPlaidWebhook = createPlaidWebhookVerifier(plaidClient);
 
 function plaidErrorCode(error) {
   return error?.response?.data?.error_code ?? error?.data?.error_code ?? error?.error_code;
@@ -148,7 +157,7 @@ app.post('/exchange-public-token', requireApiKey, requireUserId, async (req, res
     });
 
     // Store the access token by user ID so each app install keeps its own Plaid connection.
-    saveAccessToken(req.userId, response.data.access_token, response.data.item_id);
+    await saveAccessToken(req.userId, response.data.access_token, response.data.item_id);
 
     // Log only the user ID, never the secret access token itself.
     console.log(`Plaid access token saved for user ${req.userId}`);
@@ -162,13 +171,13 @@ app.post('/exchange-public-token', requireApiKey, requireUserId, async (req, res
 // transactionsSync returns incremental transaction updates from Plaid and is Plaid's recommended approach for fetching transactions.
 app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) => {
   try {
-    const accessToken = getAccessToken(req.userId);
+    const accessToken = await getAccessToken(req.userId);
 
     if (!accessToken) {
       return res.status(400).json({ error: 'No access token — reconnect your bank.' });
     }
 
-    const startingCursor = getSyncCursor(req.userId);
+    const startingCursor = await getSyncCursor(req.userId);
     const {
       added,
       modified,
@@ -179,7 +188,7 @@ app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) =>
 
     if (nextCursor) {
       // Save the cursor only after every page was fetched successfully.
-      saveSyncCursor(req.userId, nextCursor);
+      await saveSyncCursor(req.userId, nextCursor);
     }
 
     res.json({
@@ -197,29 +206,46 @@ app.get('/fetch-transactions', requireApiKey, requireUserId, async (req, res) =>
 });
 
 // Lets the iOS app check whether a Plaid webhook has marked transactions as stale.
-app.get('/transactions-refresh-status', requireApiKey, requireUserId, (req, res) => {
-  res.json({ refresh_needed: getTransactionsRefreshNeeded(req.userId) });
+app.get('/transactions-refresh-status', requireApiKey, requireUserId, async (req, res) => {
+  try {
+    res.json({ refresh_needed: await getTransactionsRefreshNeeded(req.userId) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Receives notifications from Plaid when new transaction data is available.
-app.post('/webhook', (req, res) => {
-  // Before production, verify Plaid's webhook signature so only Plaid can trigger this route.
-  console.log('PLAID WEBHOOK RECEIVED:', JSON.stringify(req.body, null, 2));
-  if (
-    req.body.webhook_type === 'TRANSACTIONS' &&
-    transactionUpdateWebhookCodes.has(req.body.webhook_code)
-  ) {
-    const userId = getUserIdForItemId(req.body.item_id);
+app.post('/webhook', verifyPlaidWebhook, async (req, res) => {
+  try {
+    console.log('Plaid webhook received:', {
+      webhook_type: req.body.webhook_type,
+      webhook_code: req.body.webhook_code,
+      item_id: req.body.item_id,
+    });
 
-    if (userId) {
-      markTransactionsRefreshNeeded(userId, true);
-      console.log(`New transaction data available for user ${userId} — app should refresh`);
-    } else {
-      console.log('New transaction data available, but no matching user was found for this item_id.');
+    if (
+      req.body.webhook_type === 'TRANSACTIONS' &&
+      transactionUpdateWebhookCodes.has(req.body.webhook_code)
+    ) {
+      if (typeof req.body.item_id !== 'string' || req.body.item_id.trim().length === 0) {
+        console.log('Transaction webhook did not include an item_id, so no user was marked stale.');
+        return res.json({ received: true });
+      }
+
+      const userId = await getUserIdForItemId(req.body.item_id.trim());
+
+      if (userId) {
+        await markTransactionsRefreshNeeded(userId, true);
+        console.log(`New transaction data available for user ${userId} — app should refresh`);
+      } else {
+        console.log('New transaction data available, but no matching user was found for this item_id.');
+      }
     }
-  }
 
-  res.json({ received: true });
+    res.json({ received: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.listen(port, () => {

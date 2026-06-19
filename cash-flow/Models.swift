@@ -35,6 +35,52 @@ enum SubscriptionStatus: String, Codable, CaseIterable {
     case pro
 }
 
+enum BankConnectionStatus: String, Codable, CaseIterable {
+    // No bank access token has been saved for this install yet.
+    case notConnected
+
+    // The backend has accepted a Plaid public token and the app can sync transactions.
+    case connected
+
+    // Plaid or the backend needs the user to go through Link again.
+    case needsReconnect
+
+    // The last bank action failed, but reconnecting might not be required.
+    case error
+}
+
+@Model
+final class BankConnection {
+    // A stable unique value for the one local bank connection status record.
+    var id: UUID
+
+    // The explicit connection state shown in the Bank tab. This replaces guessing from whether transactions exist.
+    var status: BankConnectionStatus
+
+    // When the app last completed the Plaid public token exchange successfully.
+    var connectedAt: Date?
+
+    // When the app last finished importing Plaid transactions successfully.
+    var lastSyncedAt: Date?
+
+    // The latest user-readable bank error, kept so the recovery state survives app relaunches.
+    var lastErrorMessage: String?
+
+    init(
+        id: UUID = UUID(),
+        status: BankConnectionStatus = .notConnected,
+        connectedAt: Date? = nil,
+        lastSyncedAt: Date? = nil,
+        lastErrorMessage: String? = nil
+    ) {
+        self.id = id
+        self.status = status
+        self.connectedAt = connectedAt
+        self.lastSyncedAt = lastSyncedAt
+        self.lastErrorMessage = lastErrorMessage
+    }
+}
+
 @Model
 final class Widget {
     // A stable unique value for this widget, useful when matching SwiftData objects to UI state or external references.

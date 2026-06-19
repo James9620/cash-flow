@@ -15,6 +15,10 @@ struct SwiftDataDebugView: View {
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \IncomeEvent.depositedAt, order: .reverse) private var incomeEvents: [IncomeEvent]
     @Query private var userSettings: [UserSettings]
+    @Query private var bankConnections: [BankConnection]
+
+    // This view model gives the debug screen access to the same reset path used by bank recovery work.
+    @State private var bankViewModel = BankConnectionViewModel()
 
     var body: some View {
         NavigationStack {
@@ -90,6 +94,57 @@ struct SwiftDataDebugView: View {
                         }
                     }
                 }
+
+                Section("Bank Connection Debug") {
+                    if let bankConnection = bankConnections.first {
+                        HStack {
+                            Text("Status")
+                            Spacer()
+                            Text(bankConnection.status.rawValue)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let connectedAt = bankConnection.connectedAt {
+                            HStack {
+                                Text("Connected")
+                                Spacer()
+                                Text(connectedAt, format: .dateTime.year().month().day().hour().minute())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        if let lastSyncedAt = bankConnection.lastSyncedAt {
+                            HStack {
+                                Text("Last Sync")
+                                Spacer()
+                                Text(lastSyncedAt, format: .dateTime.year().month().day().hour().minute())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        if let lastErrorMessage = bankConnection.lastErrorMessage {
+                            Text(lastErrorMessage)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    } else {
+                        Text("No bank connection status saved yet.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button(role: .destructive) {
+                        // Keep this reset in Debug so normal users see recovery/reconnect actions instead.
+                        bankViewModel.resetLocalBankData(context: modelContext)
+                    } label: {
+                        Label("Reset Local Bank Data", systemImage: "trash")
+                    }
+
+                    if let errorMessage = bankViewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
             }
             .navigationTitle("SwiftData Debug")
         }
@@ -137,6 +192,9 @@ struct SwiftDataDebugView: View {
     private func saveContext() {
         do {
             try modelContext.save()
+
+            // Keep the widget-facing snapshot current when debug sample data changes.
+            try? WidgetSnapshotExporter().export(context: modelContext)
         } catch {
             assertionFailure("Failed to save SwiftData debug data: \(error)")
         }
@@ -213,6 +271,7 @@ private struct ImportedTransactionDebugRow: View {
 #Preview {
     SwiftDataDebugView()
         .modelContainer(for: [
+            BankConnection.self,
             Widget.self,
             Transaction.self,
             IncomeEvent.self,

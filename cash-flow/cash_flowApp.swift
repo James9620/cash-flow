@@ -19,6 +19,7 @@ struct cash_flowApp: App {
     init() {
         // The schema lists every @Model class that SwiftData should know how to save.
         let schema = Schema([
+            BankConnection.self,
             Widget.self,
             Transaction.self,
             IncomeEvent.self,
