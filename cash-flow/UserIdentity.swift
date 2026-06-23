@@ -12,6 +12,10 @@ enum UserIdentity {
 
     // Each install gets its own stable ID so the backend can store Plaid tokens per user.
     static var currentUserID: String {
+        if let sessionUserID = BackendSessionStore.userID {
+            return sessionUserID
+        }
+
         if let existingID = UserDefaults.standard.string(forKey: userDefaultsKey) {
             return existingID
         }

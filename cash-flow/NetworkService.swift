@@ -21,6 +21,26 @@ final class NetworkService {
         self.session = session
     }
 
+    func exchangeAppleSession(
+        identityToken: String,
+        rawNonce: String,
+        authorizationCode: String?
+    ) async throws -> BackendSessionResponse {
+        var request = try makeRequest(path: "/auth/apple-session", method: "POST", requiresAuthentication: false)
+        request.httpBody = try encoder.encode(
+            AppleSessionRequest(
+                identityToken: identityToken,
+                rawNonce: rawNonce,
+                authorizationCode: authorizationCode
+            )
+        )
+
+        let (data, response) = try await session.data(for: request)
+        try validate(response: response, data: data)
+
+        return try decoder.decode(BackendSessionResponse.self, from: data)
+    }
+
     func createLinkToken(userID: String) async throws -> String {
         // Build the POST request for the backend route that creates a Plaid Link token.
         var request = try makeRequest(path: "/create-link-token", method: "POST")
@@ -104,31 +124,48 @@ final class NetworkService {
         return decodedResponse.refreshNeeded
     }
 
-    private func makeRequest(path: String, method: String) throws -> URLRequest {
+    private func makeRequest(
+        path: String,
+        method: String,
+        requiresAuthentication: Bool = true
+    ) throws -> URLRequest {
         guard let url = URL(string: ServerConfig.baseURL + path) else {
             throw NetworkServiceError.invalidURL(ServerConfig.baseURL + path)
         }
 
-        return try makeRequest(url: url, method: method)
+        return try makeRequest(url: url, method: method, requiresAuthentication: requiresAuthentication)
     }
 
-    private func makeRequest(url: URL, method: String) throws -> URLRequest {
+    private func makeRequest(
+        url: URL,
+        method: String,
+        requiresAuthentication: Bool = true
+    ) throws -> URLRequest {
         // Set up the request once so every endpoint uses the same JSON headers.
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        // The backend rejects protected routes without this shared secret.
-        let apiSecretKey = ServerConfig.apiSecretKey.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !apiSecretKey.isEmpty else {
-            throw NetworkServiceError.missingAPISecret
+        guard requiresAuthentication else {
+            return request
         }
 
-        request.setValue("Bearer \(apiSecretKey)", forHTTPHeaderField: "Authorization")
+        if let sessionToken = BackendSessionStore.sessionToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !sessionToken.isEmpty {
+            request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
+            return request
+        }
 
-        return request
+        // Development simulator runs can still use the old shared-secret path.
+        let apiSecretKey = ServerConfig.apiSecretKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !apiSecretKey.isEmpty {
+            request.setValue("Bearer \(apiSecretKey)", forHTTPHeaderField: "Authorization")
+            return request
+        }
+
+        throw NetworkServiceError.missingAuthentication
     }
 
     private func validate(response: URLResponse, data: Data) throws {
@@ -151,6 +188,18 @@ private struct CreateLinkTokenRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case userID = "user_id"
+    }
+}
+
+private struct AppleSessionRequest: Encodable {
+    let identityToken: String
+    let rawNonce: String
+    let authorizationCode: String?
+
+    enum CodingKeys: String, CodingKey {
+        case identityToken = "identity_token"
+        case rawNonce = "raw_nonce"
+        case authorizationCode = "authorization_code"
     }
 }
 
@@ -198,7 +247,7 @@ private enum NetworkServiceError: LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int, message: String?)
     case exchangeFailed
-    case missingAPISecret
+    case missingAuthentication
 
     var errorDescription: String? {
         switch self {
@@ -210,8 +259,8 @@ private enum NetworkServiceError: LocalizedError {
             return message ?? "The server returned status code \(statusCode)."
         case .exchangeFailed:
             return "The server did not confirm the public token exchange."
-        case .missingAPISecret:
-            return "Missing CASH_FLOW_API_SECRET_KEY. Add it to your local run environment before connecting a bank."
+        case .missingAuthentication:
+            return "Sign in with Apple before connecting a bank, or set CASH_FLOW_API_SECRET_KEY for local debug runs."
         }
     }
 }

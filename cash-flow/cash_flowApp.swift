@@ -10,6 +10,9 @@ import SwiftData
 
 @main
 struct cash_flowApp: App {
+    // This root-owned session decides whether the app shows Sign in with Apple or the main tabs.
+    @State private var backendSession = BackendSession()
+
     // The ModelContainer is the top-level SwiftData object that owns the app's saved database.
     private let modelContainer: ModelContainer
 
@@ -42,9 +45,21 @@ struct cash_flowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootSessionView(session: backendSession)
         }
         // This makes the same SwiftData container available to the whole app through SwiftUI's environment.
         .modelContainer(modelContainer)
+    }
+}
+
+private struct RootSessionView: View {
+    let session: BackendSession
+
+    var body: some View {
+        if session.isSignedIn {
+            ContentView(session: session)
+        } else {
+            SignInView(session: session)
+        }
     }
 }

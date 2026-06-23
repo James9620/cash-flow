@@ -14,18 +14,14 @@ struct ContentView: View {
     @Query private var userSettings: [UserSettings]
     @Query private var bankConnections: [BankConnection]
 
+    let session: BackendSession
+
     var body: some View {
         TabView {
-            VStack {
-                Image(systemName: "globe")
-                    .imageScale(.large)
-                    .foregroundStyle(.tint)
-                Text("Hello, world!")
-            }
-            .padding()
-            .tabItem {
-                Label("Home", systemImage: "house")
-            }
+            HomeView(session: session)
+                .tabItem {
+                    Label("Home", systemImage: "house")
+                }
 
             BankConnectionView()
                 .tabItem {
@@ -104,7 +100,7 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(session: .previewSignedIn)
         .modelContainer(for: [
             BankConnection.self,
             Widget.self,

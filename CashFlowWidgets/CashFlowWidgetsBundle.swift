@@ -12,7 +12,5 @@ import SwiftUI
 struct CashFlowWidgetsBundle: WidgetBundle {
     var body: some Widget {
         CashFlowWidgets()
-        CashFlowWidgetsControl()
-        CashFlowWidgetsLiveActivity()
     }
 }

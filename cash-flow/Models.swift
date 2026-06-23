@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-enum WidgetType: String, Codable, CaseIterable {
+enum WidgetType: String, Codable, CaseIterable, Hashable {
     // Shows spending as a stack of upcoming or category-based bills.
     case billStack
 
@@ -19,7 +19,7 @@ enum WidgetType: String, Codable, CaseIterable {
     case discretionaryNumber
 }
 
-enum BudgetPeriod: String, Codable, CaseIterable {
+enum BudgetPeriod: String, Codable, CaseIterable, Hashable {
     // Resets and measures this budget every week.
     case weekly
 

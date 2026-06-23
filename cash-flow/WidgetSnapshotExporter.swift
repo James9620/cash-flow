@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import WidgetKit
 
 struct WidgetSnapshotExporter {
     @MainActor
@@ -46,7 +47,7 @@ struct WidgetSnapshotExporter {
         try write(encodedSnapshot)
     }
 
-    private func makeSnapshot(
+    func makeSnapshot(
         widgets: [Widget],
         transactions: [Transaction],
         settings: UserSettings?,
@@ -136,6 +137,7 @@ struct WidgetSnapshotExporter {
         }
 
         defaults.set(encodedSnapshot, forKey: SharedWidgetConfiguration.snapshotUserDefaultsKey)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func makeEncoder() -> JSONEncoder {

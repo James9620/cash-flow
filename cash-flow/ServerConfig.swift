@@ -11,9 +11,8 @@ struct ServerConfig {
     // Replace this placeholder with your actual Railway app URL before testing the bank connection flow.
     static let baseURL = "https://cash-flow-production-341d.up.railway.app"
 
-    // Keep this secret out of source control. For simulator testing, set
-    // CASH_FLOW_API_SECRET_KEY in your local run environment only.
-    // A future real auth flow should remove this shared secret entirely.
+    // Keep this secret out of source control. It is only for local simulator runs
+    // when the backend is explicitly set to AUTH_MODE=development-shared-secret.
     static let apiSecretKey = configuredValue(
         infoPlistKey: "CashFlowAPISecretKey",
         environmentKey: "CASH_FLOW_API_SECRET_KEY"

@@ -46,7 +46,7 @@ let warnedAboutProductionSharedSecret = false;
 let cachedJwks = null;
 
 function getAuthMode() {
-  return process.env.AUTH_MODE?.trim().toLowerCase() || 'user-token';
+  return process.env.AUTH_MODE?.trim().toLowerCase() || 'user-session';
 }
 
 function getBearerToken(req) {
@@ -58,6 +58,56 @@ function getBearerToken(req) {
 
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : null;
+}
+
+function encodeBase64UrlJson(value) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function getSessionIssuer() {
+  return process.env.SESSION_JWT_ISSUER?.trim() || 'cash-flow-server';
+}
+
+function getSessionAudience() {
+  return process.env.SESSION_JWT_AUDIENCE?.trim() || 'com.jameslarkin.cashflow';
+}
+
+function getSessionDurationSeconds() {
+  return getPositiveNumberConfig('SESSION_JWT_EXPIRES_SECONDS', 30 * 24 * 60 * 60);
+}
+
+function getSessionSecret() {
+  return getRequiredConfig('SESSION_JWT_SECRET');
+}
+
+function createUserSessionToken(userId) {
+  const subject = userId?.trim();
+
+  if (!subject) {
+    throw new JwtValidationError('Session subject is required.');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAtSeconds = now + getSessionDurationSeconds();
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const payload = {
+    iss: getSessionIssuer(),
+    aud: getSessionAudience(),
+    sub: subject,
+    iat: now,
+    nbf: now,
+    exp: expiresAtSeconds,
+  };
+  const signingInput = `${encodeBase64UrlJson(header)}.${encodeBase64UrlJson(payload)}`;
+  const signature = crypto
+    .createHmac('sha256', getSessionSecret())
+    .update(signingInput)
+    .digest('base64url');
+
+  return {
+    token: `${signingInput}.${signature}`,
+    expiresAt: new Date(expiresAtSeconds * 1000).toISOString(),
+  };
 }
 
 class JwtConfigurationError extends Error {}
@@ -493,6 +543,59 @@ function verifyJwtClaims(payload) {
   return payload.sub.trim();
 }
 
+function verifySessionJwtClaims(payload) {
+  const now = Math.floor(Date.now() / 1000);
+  const clockSkewSeconds = getPositiveNumberConfig('SESSION_JWT_CLOCK_SKEW_SECONDS', 60);
+
+  if (payload.iss !== getSessionIssuer()) {
+    throw new JwtValidationError('Session issuer is invalid.');
+  }
+
+  if (!getTokenAudiences(payload).includes(getSessionAudience())) {
+    throw new JwtValidationError('Session audience is invalid.');
+  }
+
+  if (getNumericJwtClaim(payload, 'exp') <= now - clockSkewSeconds) {
+    throw new JwtValidationError('Session has expired.');
+  }
+
+  const notBefore = getOptionalNumericJwtClaim(payload, 'nbf');
+  const issuedAt = getOptionalNumericJwtClaim(payload, 'iat');
+
+  if (notBefore !== null && notBefore > now + clockSkewSeconds) {
+    throw new JwtValidationError('Session is not valid yet.');
+  }
+
+  if (issuedAt !== null && issuedAt > now + clockSkewSeconds) {
+    throw new JwtValidationError('Session was issued in the future.');
+  }
+
+  if (typeof payload.sub !== 'string' || payload.sub.trim().length === 0) {
+    throw new JwtValidationError('Session subject is required.');
+  }
+
+  return payload.sub.trim();
+}
+
+function verifyUserSessionToken(token) {
+  const parsedJwt = parseJwt(token);
+
+  if (parsedJwt.header.alg !== 'HS256') {
+    throw new JwtValidationError('Session must use HS256.');
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', getSessionSecret())
+    .update(parsedJwt.signingInput)
+    .digest();
+
+  if (!timingSafeEqualBuffer(expectedSignature, parsedJwt.signature)) {
+    throw new JwtValidationError('Session signature is invalid.');
+  }
+
+  return verifySessionJwtClaims(parsedJwt.payload);
+}
+
 function requireSharedSecret(req, res, next) {
   const expectedKey = process.env.API_SECRET_KEY;
 
@@ -508,13 +611,13 @@ function requireSharedSecret(req, res, next) {
   ) {
     warnedAboutProductionSharedSecret = true;
     console.warn(
-      'Shared-secret auth is development-only. Set AUTH_MODE=user-token in production.',
+      'Shared-secret auth is development-only. Set AUTH_MODE=user-session in production.',
     );
   }
 
   if (process.env.NODE_ENV === 'production') {
     return res.status(500).json({
-      error: 'Shared-secret auth is development-only. Set AUTH_MODE=user-token.',
+      error: 'Shared-secret auth is development-only. Set AUTH_MODE=user-session.',
     });
   }
 
@@ -552,6 +655,27 @@ async function requireUserToken(req, res, next) {
   }
 }
 
+function requireUserSession(req, res, next) {
+  const token = getBearerToken(req);
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    req.authenticatedUserId = verifyUserSessionToken(token);
+    return next();
+  } catch (error) {
+    if (error instanceof JwtConfigurationError) {
+      console.error(`Session auth configuration error: ${error.message}`);
+      return res.status(500).json({ error: 'Server authentication is not configured.' });
+    }
+
+    console.warn(`Rejected user session: ${error.message}`);
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
 function requireApiKey(req, res, next) {
   const authMode = getAuthMode();
 
@@ -561,6 +685,10 @@ function requireApiKey(req, res, next) {
 
   if (authMode === 'user-token') {
     return requireUserToken(req, res, next);
+  }
+
+  if (authMode === 'user-session') {
+    return requireUserSession(req, res, next);
   }
 
   return res.status(500).json({
@@ -590,6 +718,8 @@ function requireUserId(req, res, next) {
 }
 
 module.exports = {
+  createUserSessionToken,
   requireApiKey,
   requireUserId,
+  verifyUserSessionToken,
 };
