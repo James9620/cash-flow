@@ -176,6 +176,9 @@ final class IncomeEvent {
     // The amount of income received.
     var amount: Double
 
+    // The discretionary amount that was actually added to the running balance for this income event.
+    var discretionaryAmount: Double?
+
     // The date the income was expected, earned, or recorded.
     var date: Date
 
@@ -188,12 +191,14 @@ final class IncomeEvent {
     init(
         id: UUID = UUID(),
         amount: Double,
+        discretionaryAmount: Double? = nil,
         date: Date,
         depositedAt: Date,
         plaidID: String? = nil
     ) {
         self.id = id
         self.amount = amount
+        self.discretionaryAmount = discretionaryAmount
         self.date = date
         self.depositedAt = depositedAt
         self.plaidID = plaidID
@@ -204,6 +209,9 @@ final class IncomeEvent {
 final class UserSettings {
     // The percentage of income the user wants to route to savings.
     var savingsPercentage: Double
+
+    // Pro users can reserve a second percentage of income for bills or short-term cash buffers.
+    var billsReservePercentage: Double = 0
 
     // The current amount available for discretionary spending after savings is set aside.
     var discretionaryBalance: Double = 0
@@ -216,11 +224,13 @@ final class UserSettings {
 
     init(
         savingsPercentage: Double = 0,
+        billsReservePercentage: Double = 0,
         discretionaryBalance: Double = 0,
         onboardingComplete: Bool = false,
         subscriptionStatus: SubscriptionStatus = .free
     ) {
         self.savingsPercentage = savingsPercentage
+        self.billsReservePercentage = billsReservePercentage
         self.discretionaryBalance = discretionaryBalance
         self.onboardingComplete = onboardingComplete
         self.subscriptionStatus = subscriptionStatus

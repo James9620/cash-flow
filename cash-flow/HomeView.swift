@@ -13,26 +13,18 @@ import WidgetKit
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
 
-    @Query(sort: \Widget.name) private var widgets: [Widget]
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var userSettings: [UserSettings]
     @Query private var bankConnections: [BankConnection]
 
     let session: BackendSession
-
-    @State private var progressName = "Progress Budget"
-    @State private var progressBudget = "500"
-    @State private var progressCategories = "Dining, Groceries"
-    @State private var progressPeriod: BudgetPeriod = .monthly
-
-    @State private var billName = "Bill Stack"
-    @State private var billBudget = "1200"
-    @State private var billCategories = "Utilities, Rent"
-    @State private var billPeriod: BudgetPeriod = .monthly
+    let subscriptionManager: SubscriptionManager
 
     @State private var savingsPercentage = "20"
+    @State private var billsReservePercentage = "0"
     @State private var statusMessage: String?
     @State private var errorMessage: String?
+    @State private var presentedSheet: HomeSheet?
 
     private var settings: UserSettings? {
         userSettings.first
@@ -56,23 +48,8 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         balancePanel
 
-                        WidgetBudgetEditor(
-                            title: "Progress Bar",
-                            name: $progressName,
-                            budget: $progressBudget,
-                            period: $progressPeriod,
-                            categories: $progressCategories
-                        )
-
-                        WidgetBudgetEditor(
-                            title: "Bill Stack",
-                            name: $billName,
-                            budget: $billBudget,
-                            period: $billPeriod,
-                            categories: $billCategories
-                        )
-
                         savingsPanel
+                        proSplitPanel
 
                         Button {
                             saveHomeSettings()
@@ -105,6 +82,7 @@ struct HomeView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 Button("Sign Out") {
+                    subscriptionManager.clearForSignOut()
                     session.signOut()
                 }
                 .foregroundStyle(CashFlowHomeColors.accent)
@@ -112,6 +90,15 @@ struct HomeView: View {
         }
         .task {
             loadDraftsFromSavedData()
+        }
+        .onChange(of: userSettingsSignature) {
+            loadDraftsFromSavedData()
+        }
+        .sheet(item: $presentedSheet) { sheet in
+            switch sheet {
+            case .pro:
+                ProView(subscriptionManager: subscriptionManager)
+            }
         }
     }
 
@@ -134,6 +121,10 @@ struct HomeView: View {
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(CashFlowHomeColors.secondaryText)
+
+            Text(subscriptionManager.isPro ? "Cash Flow Pro" : "Free")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.secondaryText)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,7 +134,7 @@ struct HomeView: View {
 
     private var savingsPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Savings")
+            Text("Income Split")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(CashFlowHomeColors.primaryText)
 
@@ -155,6 +146,52 @@ struct HomeView: View {
                 .font(.caption)
                 .foregroundStyle(CashFlowHomeColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CashFlowHomeColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var proSplitPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Bills / Reserve")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(CashFlowHomeColors.primaryText)
+
+                Spacer()
+
+                Text("Pro")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.accent)
+            }
+
+            if subscriptionManager.isPro {
+                TextField("Bills / Reserve Percentage", text: $billsReservePercentage)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+
+                Text("Pro income deposits subtract savings and bills/reserve before updating discretionary balance.")
+                    .font(.caption)
+                    .foregroundStyle(CashFlowHomeColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Upgrade to split income into savings, bills/reserve, and discretionary spending.")
+                    .font(.subheadline)
+                    .foregroundStyle(CashFlowHomeColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    presentedSheet = .pro
+                } label: {
+                    Label("View Pro", systemImage: "creditcard")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(CashFlowHomeColors.accent)
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -176,49 +213,34 @@ struct HomeView: View {
     }
 
     private func loadDraftsFromSavedData() {
-        if let progressWidget = firstWidget(type: .progressBar) {
-            progressName = progressWidget.name
-            progressBudget = formattedNumber(progressWidget.budget)
-            progressPeriod = progressWidget.period
-            progressCategories = progressWidget.categories.joined(separator: ", ")
-        }
-
-        if let billWidget = firstWidget(type: .billStack) {
-            billName = billWidget.name
-            billBudget = formattedNumber(billWidget.budget)
-            billPeriod = billWidget.period
-            billCategories = billWidget.categories.joined(separator: ", ")
-        }
-
         if let settings {
             savingsPercentage = formattedNumber(settings.savingsPercentage)
+            billsReservePercentage = formattedNumber(settings.billsReservePercentage)
         }
     }
 
     private func saveHomeSettings() {
         do {
-            let progressBudgetAmount = try amount(from: progressBudget, field: "Progress Bar budget")
-            let billBudgetAmount = try amount(from: billBudget, field: "Bill Stack budget")
             let savingsAmount = min(max(try amount(from: savingsPercentage, field: "Savings percentage"), 0), 100)
-
-            _ = ensureSingleWidget(
-                type: .progressBar,
-                name: progressName,
-                budget: progressBudgetAmount,
-                period: progressPeriod,
-                categories: categories(from: progressCategories)
-            )
-
-            _ = ensureSingleWidget(
-                type: .billStack,
-                name: billName,
-                budget: billBudgetAmount,
-                period: billPeriod,
-                categories: categories(from: billCategories)
-            )
-
             let settings = try firstOrCreateSettings()
+            let billsReserveAmount = subscriptionManager.isPro
+                ? min(max(try amount(from: billsReservePercentage, field: "Bills / Reserve percentage"), 0), 100)
+                : settings.billsReservePercentage
+
+            guard IncomeSplit.canSave(
+                savingsPercentage: savingsAmount,
+                billsReservePercentage: billsReserveAmount,
+                subscriptionStatus: subscriptionManager.subscriptionStatus
+            ) else {
+                throw HomeSettingsError.splitOverLimit
+            }
+
             settings.savingsPercentage = savingsAmount
+            settings.subscriptionStatus = subscriptionManager.subscriptionStatus
+
+            if subscriptionManager.isPro {
+                settings.billsReservePercentage = billsReserveAmount
+            }
 
             try modelContext.save()
 
@@ -232,43 +254,6 @@ struct HomeView: View {
             statusMessage = nil
             errorMessage = error.localizedDescription
         }
-    }
-
-    private func firstWidget(type: WidgetType) -> Widget? {
-        widgets.first { $0.type == type }
-    }
-
-    private func ensureSingleWidget(
-        type: WidgetType,
-        name: String,
-        budget: Double,
-        period: BudgetPeriod,
-        categories: [String]
-    ) -> Widget {
-        let matches = widgets.filter { $0.type == type }
-        let widget = matches.first ?? Widget(
-            name: trimmedName(name, fallback: defaultName(for: type)),
-            type: type,
-            budget: budget,
-            period: period,
-            categories: categories
-        )
-
-        if widget.modelContext == nil {
-            modelContext.insert(widget)
-        }
-
-        widget.name = trimmedName(name, fallback: defaultName(for: type))
-        widget.budget = budget
-        widget.period = period
-        widget.categories = categories
-
-        // Keep one local budget per widget type so the widget extension has a single source of truth.
-        for duplicate in matches.dropFirst() {
-            modelContext.delete(duplicate)
-        }
-
-        return widget
     }
 
     private func firstOrCreateSettings() throws -> UserSettings {
@@ -290,28 +275,6 @@ struct HomeView: View {
         return amount
     }
 
-    private func categories(from text: String) -> [String] {
-        text.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    private func trimmedName(_ text: String, fallback: String) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? fallback : trimmed
-    }
-
-    private func defaultName(for type: WidgetType) -> String {
-        switch type {
-        case .progressBar:
-            return "Progress Budget"
-        case .billStack:
-            return "Bill Stack"
-        case .discretionaryNumber:
-            return "Discretionary"
-        }
-    }
-
     private func formattedNumber(_ value: Double) -> String {
         let rounded = value.rounded()
         if abs(value - rounded) < 0.001 {
@@ -320,62 +283,44 @@ struct HomeView: View {
 
         return String(format: "%.2f", value)
     }
-}
 
-private struct WidgetBudgetEditor: View {
-    let title: String
-    @Binding var name: String
-    @Binding var budget: String
-    @Binding var period: BudgetPeriod
-    @Binding var categories: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(CashFlowHomeColors.primaryText)
-
-            TextField("Name", text: $name)
-                .textFieldStyle(.roundedBorder)
-
-            TextField("Budget", text: $budget)
-                .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
-
-            Picker("Period", selection: $period) {
-                ForEach(BudgetPeriod.allCases, id: \.self) { period in
-                    Text(period.rawValue.capitalized)
-                        .tag(period)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            TextField("Categories", text: $categories)
-                .textFieldStyle(.roundedBorder)
-
-            Text("Separate categories with commas.")
-                .font(.caption)
-                .foregroundStyle(CashFlowHomeColors.secondaryText)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+    private var userSettingsSignature: String {
+        settings.map { settings in
+            [
+                String(settings.savingsPercentage),
+                String(settings.billsReservePercentage),
+                settings.subscriptionStatus.rawValue
+            ].joined(separator: "|")
+        } ?? "no-settings"
     }
 }
 
 private enum HomeSettingsError: LocalizedError {
     case invalidNumber(String)
+    case splitOverLimit
 
     var errorDescription: String? {
         switch self {
         case .invalidNumber(let field):
             return "\(field) must be a positive number."
+        case .splitOverLimit:
+            return "Savings and bills/reserve cannot add up to more than 100%."
         }
     }
 }
 
-private enum CashFlowHomeColors {
+private enum HomeSheet: Identifiable {
+    case pro
+
+    var id: String {
+        switch self {
+        case .pro:
+            return "pro"
+        }
+    }
+}
+
+enum CashFlowHomeColors {
     static let background = Color(red: 10 / 255, green: 10 / 255, blue: 15 / 255)
     static let surface = Color(red: 26 / 255, green: 26 / 255, blue: 36 / 255)
     static let accent = Color(red: 74 / 255, green: 158 / 255, blue: 255 / 255)
@@ -386,7 +331,7 @@ private enum CashFlowHomeColors {
 }
 
 #Preview {
-    HomeView(session: .previewSignedIn)
+    HomeView(session: .previewSignedIn, subscriptionManager: SubscriptionManager())
         .modelContainer(for: [
             BankConnection.self,
             Widget.self,

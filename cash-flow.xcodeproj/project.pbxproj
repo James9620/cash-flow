@@ -12,6 +12,7 @@
 		BB7FBD162FE510EE00159058 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB7FBD152FE510ED00159058 /* WidgetKit.framework */; };
 		BB7FBD182FE510EE00159058 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB7FBD172FE510EE00159058 /* SwiftUI.framework */; };
 		BB7FBD292FE510F000159058 /* CashFlowWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB7FBD132FE510ED00159058 /* CashFlowWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C0298506D35C43A78D95CB40 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = C04749D58BD8450986190372 /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +93,7 @@
 			files = (
 				BB5F94112FDF4635000B4503 /* LinkKit in Frameworks */,
 				BB5F94132FDF4636000B4503 /* LinkKitObjC in Frameworks */,
+				C0298506D35C43A78D95CB40 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -169,6 +171,7 @@
 			packageProductDependencies = (
 				BB5F94102FDF4635000B4503 /* LinkKit */,
 				BB5F94122FDF4636000B4503 /* LinkKitObjC */,
+				C04749D58BD8450986190372 /* RevenueCat */,
 			);
 			productName = "cash-flow";
 			productReference = BB5F93FC2FDC9E17000B4503 /* cash-flow.app */;
@@ -231,6 +234,11 @@
 				TargetAttributes = {
 					BB5F93FB2FDC9E17000B4503 = {
 						CreatedOnToolsVersion = 26.5;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+						};
 					};
 					BB7FBD122FE510ED00159058 = {
 						CreatedOnToolsVersion = 26.5;
@@ -252,6 +260,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */,
+				BF343B10A3754A3380D0D506 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BB5F93FD2FDC9E17000B4503 /* Products */;
@@ -453,9 +462,10 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-					GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
-					"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_RevenueCatAppleAPIKey = "$(REVENUECAT_APPLE_API_KEY)";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
@@ -498,9 +508,10 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-					GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
-					"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_RevenueCatAppleAPIKey = "$(REVENUECAT_APPLE_API_KEY)";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
@@ -542,7 +553,7 @@
 				DEVELOPMENT_TEAM = ABUJQYZWDY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CashFlowWidgets/Info.plist;
-					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -575,7 +586,7 @@
 				DEVELOPMENT_TEAM = ABUJQYZWDY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CashFlowWidgets/Info.plist;
-					INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
+				INFOPLIST_KEY_CFBundleDisplayName = "Cash Flow";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -695,6 +706,14 @@
 				minimumVersion = 7.0.0;
 			};
 		};
+		BF343B10A3754A3380D0D506 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -707,6 +726,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BB5F940F2FDF4635000B4503 /* XCRemoteSwiftPackageReference "plaid-link-ios-spm" */;
 			productName = LinkKitObjC;
+		};
+		C04749D58BD8450986190372 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF343B10A3754A3380D0D506 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -9,16 +9,19 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @Query(sort: \Widget.name) private var widgets: [Widget]
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query private var userSettings: [UserSettings]
     @Query private var bankConnections: [BankConnection]
 
     let session: BackendSession
+    let subscriptionManager: SubscriptionManager
 
     var body: some View {
         TabView {
-            HomeView(session: session)
+            HomeView(session: session, subscriptionManager: subscriptionManager)
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
@@ -35,6 +38,13 @@ struct ContentView: View {
         }
         .task {
             exportWidgetSnapshot()
+        }
+        .task(id: session.userID) {
+            await subscriptionManager.configureIfPossible(userID: session.userID)
+            syncLocalSubscriptionStatus()
+        }
+        .onChange(of: subscriptionManager.subscriptionStatus) {
+            syncLocalSubscriptionStatus()
         }
         .onChange(of: widgetSnapshotSignature) {
             // Re-export when SwiftData changes so widgets can read the latest compact snapshot.
@@ -70,6 +80,7 @@ struct ContentView: View {
         let settingsSignature = userSettings.first.map { settings in
             [
                 String(settings.savingsPercentage),
+                String(settings.billsReservePercentage),
                 String(settings.discretionaryBalance),
                 String(settings.onboardingComplete),
                 settings.subscriptionStatus.rawValue
@@ -97,10 +108,35 @@ struct ContentView: View {
             bankConnection: bankConnections.first
         )
     }
+
+    private func syncLocalSubscriptionStatus() {
+        guard let settings = userSettings.first ?? settingsForNonFreeSubscription() else {
+            return
+        }
+
+        if settings.modelContext == nil {
+            modelContext.insert(settings)
+        }
+
+        guard settings.subscriptionStatus != subscriptionManager.subscriptionStatus else {
+            return
+        }
+
+        settings.subscriptionStatus = subscriptionManager.subscriptionStatus
+        try? modelContext.save()
+    }
+
+    private func settingsForNonFreeSubscription() -> UserSettings? {
+        guard subscriptionManager.subscriptionStatus != .free else {
+            return nil
+        }
+
+        return UserSettings()
+    }
 }
 
 #Preview {
-    ContentView(session: .previewSignedIn)
+    ContentView(session: .previewSignedIn, subscriptionManager: SubscriptionManager())
         .modelContainer(for: [
             BankConnection.self,
             Widget.self,

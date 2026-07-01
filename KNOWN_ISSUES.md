@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-06-22
+Last updated: 2026-06-24
 
 ## Build and Verification
 
@@ -22,7 +22,8 @@ Last updated: 2026-06-22
 ## Widgets
 
 - Widgets do not appear automatically after bank sign-in. They must be manually added from the iOS Home Screen widget picker.
-- Progress Bar and Bill Stack data now come from the Home tab's single saved budget for each type. If either budget is blank or categories do not match imported Plaid categories, that widget may show an empty or zero-spend state.
+- The first production-ready version only includes the Discretionary Number widget.
+- Progress Bar and Bill Stack are intentionally deferred to future updates. Any current Progress Bar or Bill Stack code should be treated as non-final until those widgets are brought back into scope.
 
 ## Development Tools
 

@@ -280,7 +280,10 @@ final class BankConnectionViewModel {
             let settings = try userSettings(context: context)
             settings.discretionaryBalance += PlaidTransactionImportLogic.balanceDeltaForRemovedIncome(
                 amount: incomeEvent.amount,
-                savingsPercentage: settings.savingsPercentage
+                savingsPercentage: settings.savingsPercentage,
+                existingDiscretionaryAmount: incomeEvent.discretionaryAmount,
+                billsReservePercentage: settings.billsReservePercentage,
+                subscriptionStatus: settings.subscriptionStatus
             )
             context.delete(incomeEvent)
         }
@@ -299,7 +302,10 @@ final class BankConnectionViewModel {
         let plan = PlaidTransactionImportLogic.incomeEventPlan(
             for: plaidTransaction,
             existingIncomeAmount: existingIncomeEvent?.amount,
-            savingsPercentage: settings.savingsPercentage
+            existingDiscretionaryAmount: existingIncomeEvent?.discretionaryAmount,
+            savingsPercentage: settings.savingsPercentage,
+            billsReservePercentage: settings.billsReservePercentage,
+            subscriptionStatus: settings.subscriptionStatus
         )
 
         switch plan {
@@ -316,6 +322,7 @@ final class BankConnectionViewModel {
         case let .upsert(values, balanceDelta):
             if let existingIncomeEvent {
                 existingIncomeEvent.amount = values.amount
+                existingIncomeEvent.discretionaryAmount = values.discretionaryAmount
                 existingIncomeEvent.date = values.date
                 existingIncomeEvent.depositedAt = values.depositedAt
                 settings.discretionaryBalance += balanceDelta
@@ -324,6 +331,7 @@ final class BankConnectionViewModel {
 
             let incomeEvent = IncomeEvent(
                 amount: values.amount,
+                discretionaryAmount: values.discretionaryAmount,
                 date: values.date,
                 depositedAt: values.depositedAt,
                 plaidID: values.plaidID

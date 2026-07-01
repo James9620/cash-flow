@@ -13,6 +13,9 @@ struct cash_flowApp: App {
     // This root-owned session decides whether the app shows Sign in with Apple or the main tabs.
     @State private var backendSession = BackendSession()
 
+    // This service owns RevenueCat status for the signed-in user and keeps purchase logic out of the views.
+    @State private var subscriptionManager = SubscriptionManager()
+
     // The ModelContainer is the top-level SwiftData object that owns the app's saved database.
     private let modelContainer: ModelContainer
 
@@ -45,7 +48,7 @@ struct cash_flowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootSessionView(session: backendSession)
+            RootSessionView(session: backendSession, subscriptionManager: subscriptionManager)
         }
         // This makes the same SwiftData container available to the whole app through SwiftUI's environment.
         .modelContainer(modelContainer)
@@ -54,12 +57,16 @@ struct cash_flowApp: App {
 
 private struct RootSessionView: View {
     let session: BackendSession
+    let subscriptionManager: SubscriptionManager
 
     var body: some View {
         if session.isSignedIn {
-            ContentView(session: session)
+            ContentView(session: session, subscriptionManager: subscriptionManager)
         } else {
             SignInView(session: session)
+                .onAppear {
+                    subscriptionManager.clearForSignOut()
+                }
         }
     }
 }

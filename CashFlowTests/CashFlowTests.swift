@@ -100,6 +100,7 @@ struct CashFlowTests {
         }
 
         #expect(values.amount == 2000)
+        #expect(values.discretionaryAmount == 1600)
         #expect(balanceDelta == 1600)
     }
 
@@ -122,7 +123,46 @@ struct CashFlowTests {
         }
 
         #expect(values.amount == 2200)
+        #expect(values.discretionaryAmount == 1760)
         #expect(balanceDelta == 160)
+    }
+
+    @Test func correctedHistoricalIncomeKeepsOriginalSplitRatio() {
+        let correctedPayrollDeposit = makePlaidTransaction(
+            amount: -1200,
+            name: "Direct Deposit",
+            category: ["Income", "Payroll"]
+        )
+
+        let plan = PlaidTransactionImportLogic.incomeEventPlan(
+            for: correctedPayrollDeposit,
+            existingIncomeAmount: 1000,
+            existingDiscretionaryAmount: 500,
+            savingsPercentage: 20,
+            billsReservePercentage: 10,
+            subscriptionStatus: .pro
+        )
+
+        guard case let .upsert(values, balanceDelta) = plan else {
+            Issue.record("Expected an upsert plan.")
+            return
+        }
+
+        #expect(values.amount == 1200)
+        #expect(values.discretionaryAmount == 600)
+        #expect(balanceDelta == 100)
+    }
+
+    @Test func removedHistoricalIncomeUsesStoredDiscretionaryAmount() {
+        let delta = PlaidTransactionImportLogic.balanceDeltaForRemovedIncome(
+            amount: 1000,
+            savingsPercentage: 20,
+            existingDiscretionaryAmount: 800,
+            billsReservePercentage: 30,
+            subscriptionStatus: .pro
+        )
+
+        #expect(delta == -800)
     }
 
     @Test func incomeCorrectedIntoSpendingRemovesExistingIncome() {
@@ -150,6 +190,40 @@ struct CashFlowTests {
         #expect(PlaidTransactionImportLogic.discretionaryAmount(fromIncome: 1000, savingsPercentage: -10) == 1000)
         #expect(PlaidTransactionImportLogic.discretionaryAmount(fromIncome: 1000, savingsPercentage: 150) == 0)
         #expect(PlaidTransactionImportLogic.discretionaryAmount(fromIncome: 1000, savingsPercentage: 30) == 700)
+    }
+
+    @Test func freeSplitIgnoresBillsReservePercentage() {
+        let amount = PlaidTransactionImportLogic.discretionaryAmount(
+            fromIncome: 1000,
+            savingsPercentage: 20,
+            billsReservePercentage: 30,
+            subscriptionStatus: .free
+        )
+
+        #expect(amount == 800)
+    }
+
+    @Test func proSplitSubtractsSavingsAndBillsReserve() {
+        let amount = PlaidTransactionImportLogic.discretionaryAmount(
+            fromIncome: 1000,
+            savingsPercentage: 20,
+            billsReservePercentage: 30,
+            subscriptionStatus: .pro
+        )
+
+        #expect(amount == 500)
+    }
+
+    @Test func incomeSplitRejectsOverAllocatedProSplit() {
+        #expect(IncomeSplit.canSave(savingsPercentage: 60, billsReservePercentage: 40, subscriptionStatus: .pro))
+        #expect(!IncomeSplit.canSave(savingsPercentage: 60, billsReservePercentage: 41, subscriptionStatus: .pro))
+        #expect(IncomeSplit.canSave(savingsPercentage: 60, billsReservePercentage: 41, subscriptionStatus: .free))
+    }
+
+    @Test func activeProEntitlementMapsToProStatus() {
+        #expect(SubscriptionEntitlements.status(activeEntitlementIDs: ["pro"]) == .pro)
+        #expect(SubscriptionEntitlements.status(activeEntitlementIDs: []) == .free)
+        #expect(SubscriptionEntitlements.status(activeEntitlementIDs: ["other"]) == .free)
     }
 
     @Test func widgetSnapshotCountsCurrentMatchingSpendingAndBalance() throws {

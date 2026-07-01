@@ -16,5 +16,5 @@ The focused Phase 5 tests now live in `CashFlowTests/CashFlowTests.swift`.
 
 - Run `CashFlowTests` in Xcode on the developer machine.
 - Run the main app target with Sign in with Apple enabled.
-- Run or install the widget extension and confirm all three widget configurations read the shared snapshot.
+- Run or install the widget extension and confirm the Discretionary Number widget reads the shared snapshot.
 - Reconnect Plaid sandbox after sign-in if the previous access token was saved under the old install UUID.
