@@ -50,6 +50,7 @@ struct HomeView: View {
 
                         savingsPanel
                         proSplitPanel
+                        widgetGuidePanel
 
                         Button {
                             saveHomeSettings()
@@ -103,100 +104,128 @@ struct HomeView: View {
     }
 
     private var balancePanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Discretionary")
-                .font(.caption.weight(.bold))
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Discretionary")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(CashFlowHomeColors.secondaryText)
+
+                    Spacer()
+
+                    CashFlowStatusPill(
+                        subscriptionManager.isPro ? "Pro" : "Free",
+                        color: subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.secondaryText
+                    )
+                }
+
+                Text(discretionaryBalance, format: .currency(code: "USD"))
+                    .font(.system(size: 42, weight: .black))
+                    .foregroundStyle(CashFlowHomeColors.primaryText)
+                    .minimumScaleFactor(0.65)
+                    .lineLimit(1)
+
+                HStack {
+                    Text(bankStatusText)
+                    Spacer()
+                    Text("\(transactions.count) txns")
+                }
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(CashFlowHomeColors.secondaryText)
 
-            Text(discretionaryBalance, format: .currency(code: "USD"))
-                .font(.system(size: 42, weight: .black))
-                .foregroundStyle(CashFlowHomeColors.primaryText)
-                .minimumScaleFactor(0.65)
-                .lineLimit(1)
-
-            HStack {
-                Text(bankStatusText)
-                Spacer()
-                Text("\(transactions.count) txns")
+                CashFlowMiniWidgetPreview(
+                    balance: discretionaryBalance,
+                    statusText: bankConnection?.lastSyncedAt == nil ? "Not synced" : "Synced"
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
             }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(CashFlowHomeColors.secondaryText)
-
-            Text(subscriptionManager.isPro ? "Cash Flow Pro" : "Free")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.secondaryText)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var savingsPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Income Split")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(CashFlowHomeColors.primaryText)
-
-            TextField("Savings Percentage", text: $savingsPercentage)
-                .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
-
-            Text("Income deposits add the remaining percentage to discretionary balance.")
-                .font(.caption)
-                .foregroundStyle(CashFlowHomeColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var proSplitPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Bills / Reserve")
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Income Split")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(CashFlowHomeColors.primaryText)
 
-                Spacer()
+                CashFlowPercentageField(
+                    title: "Savings Percentage",
+                    caption: "Income deposits add the remaining percentage to discretionary balance.",
+                    text: $savingsPercentage
+                )
 
-                Text("Pro")
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.accent)
+                CashFlowAllocationBar(
+                    savingsPercentage: draftSavingsPercentage,
+                    billsReservePercentage: subscriptionManager.isPro ? draftBillsReservePercentage : 0,
+                    isPro: subscriptionManager.isPro
+                )
             }
+        }
+    }
 
-            if subscriptionManager.isPro {
-                TextField("Bills / Reserve Percentage", text: $billsReservePercentage)
-                    .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
+    private var proSplitPanel: some View {
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Bills / Reserve")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(CashFlowHomeColors.primaryText)
 
-                Text("Pro income deposits subtract savings and bills/reserve before updating discretionary balance.")
-                    .font(.caption)
-                    .foregroundStyle(CashFlowHomeColors.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("Upgrade to split income into savings, bills/reserve, and discretionary spending.")
+                    Spacer()
+
+                    CashFlowStatusPill(
+                        "Pro",
+                        color: subscriptionManager.isPro ? CashFlowHomeColors.success : CashFlowHomeColors.accent
+                    )
+                }
+
+                if subscriptionManager.isPro {
+                    CashFlowPercentageField(
+                        title: "Bills / Reserve Percentage",
+                        caption: "Pro income deposits subtract savings and bills/reserve before updating discretionary balance.",
+                        text: $billsReservePercentage
+                    )
+                } else {
+                    Text("Upgrade to split income into savings, bills/reserve, and discretionary spending.")
+                        .font(.subheadline)
+                        .foregroundStyle(CashFlowHomeColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        presentedSheet = .pro
+                    } label: {
+                        Label("View Pro", systemImage: "creditcard")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(CashFlowHomeColors.accent)
+                }
+            }
+        }
+    }
+
+    private var widgetGuidePanel: some View {
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Widget")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(CashFlowHomeColors.primaryText)
+
+                    Spacer()
+
+                    CashFlowStatusPill("Discretionary Number", color: CashFlowHomeColors.accent)
+                }
+
+                Text("For v1, Cash Flow is focused on the Discretionary Number widget. Add it manually from the iOS Home Screen widget picker.")
                     .font(.subheadline)
                     .foregroundStyle(CashFlowHomeColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Button {
-                    presentedSheet = .pro
-                } label: {
-                    Label("View Pro", systemImage: "creditcard")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .tint(CashFlowHomeColors.accent)
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var bankStatusText: String {
@@ -210,6 +239,14 @@ struct HomeView: View {
         case .error:
             return "Bank needs attention"
         }
+    }
+
+    private var draftSavingsPercentage: Double {
+        Double(savingsPercentage.trimmingCharacters(in: .whitespacesAndNewlines)) ?? settings?.savingsPercentage ?? 0
+    }
+
+    private var draftBillsReservePercentage: Double {
+        Double(billsReservePercentage.trimmingCharacters(in: .whitespacesAndNewlines)) ?? settings?.billsReservePercentage ?? 0
     }
 
     private func loadDraftsFromSavedData() {
@@ -320,15 +357,7 @@ private enum HomeSheet: Identifiable {
     }
 }
 
-enum CashFlowHomeColors {
-    static let background = Color(red: 10 / 255, green: 10 / 255, blue: 15 / 255)
-    static let surface = Color(red: 26 / 255, green: 26 / 255, blue: 36 / 255)
-    static let accent = Color(red: 74 / 255, green: 158 / 255, blue: 255 / 255)
-    static let primaryText = Color.white
-    static let secondaryText = Color(red: 158 / 255, green: 163 / 255, blue: 176 / 255)
-    static let success = Color(red: 0 / 255, green: 212 / 255, blue: 184 / 255)
-    static let error = Color(red: 255 / 255, green: 95 / 255, blue: 116 / 255)
-}
+typealias CashFlowHomeColors = CashFlowTheme
 
 #Preview {
     HomeView(session: .previewSignedIn, subscriptionManager: SubscriptionManager())

@@ -14,54 +14,57 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            CashFlowSignInColors.background
+            CashFlowTheme.background
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Cash Flow")
                         .font(.system(size: 42, weight: .black))
-                        .foregroundStyle(CashFlowSignInColors.primaryText)
+                        .foregroundStyle(CashFlowTheme.primaryText)
 
-                    Text("Connect securely before syncing bank data and widget snapshots.")
+                    Text("Sign in securely, then set up your Discretionary Number widget.")
                         .font(.headline)
-                        .foregroundStyle(CashFlowSignInColors.secondaryText)
+                        .foregroundStyle(CashFlowTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                VStack(alignment: .leading, spacing: 14) {
-                    SignInWithAppleButton(.signIn) { request in
-                        configureAppleRequest(request)
-                    } onCompletion: { result in
-                        handleAppleCompletion(result)
-                    }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .disabled(session.isSigningIn)
+                CashFlowMiniWidgetPreview(balance: 420, statusText: "Preview")
+                    .frame(maxWidth: .infinity)
 
-                    if session.isSigningIn {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                                .tint(CashFlowSignInColors.accent)
+                CashFlowPanel {
+                    VStack(alignment: .leading, spacing: 14) {
+                        CashFlowStatusPill("Apple + Cash Flow session", color: CashFlowTheme.accent, systemImage: "lock")
 
-                            Text("Signing in...")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(CashFlowSignInColors.secondaryText)
+                        SignInWithAppleButton(.signIn) { request in
+                            configureAppleRequest(request)
+                        } onCompletion: { result in
+                            handleAppleCompletion(result)
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .disabled(session.isSigningIn)
+
+                        if session.isSigningIn {
+                            HStack(spacing: 10) {
+                                ProgressView()
+                                    .tint(CashFlowTheme.accent)
+
+                                Text("Signing in...")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(CashFlowTheme.secondaryText)
+                            }
+                        }
+
+                        if let errorMessage = session.errorMessage {
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(CashFlowTheme.error)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-
-                    if let errorMessage = session.errorMessage {
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundStyle(CashFlowSignInColors.error)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(CashFlowSignInColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .padding(24)
             .frame(maxWidth: 520, alignment: .leading)
@@ -116,15 +119,6 @@ struct SignInView: View {
             session.errorMessage = error.localizedDescription
         }
     }
-}
-
-private enum CashFlowSignInColors {
-    static let background = Color(red: 10 / 255, green: 10 / 255, blue: 15 / 255)
-    static let surface = Color(red: 26 / 255, green: 26 / 255, blue: 36 / 255)
-    static let accent = Color(red: 74 / 255, green: 158 / 255, blue: 255 / 255)
-    static let primaryText = Color.white
-    static let secondaryText = Color(red: 158 / 255, green: 163 / 255, blue: 176 / 255)
-    static let error = Color(red: 255 / 255, green: 95 / 255, blue: 116 / 255)
 }
 
 #Preview {

@@ -190,40 +190,38 @@ private struct BankStatusPanel: View {
     let transactionCount: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 10, height: 10)
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    CashFlowStatusPill(statusPillTitle, color: statusColor)
+
+                    Spacer()
+                }
 
                 Text(title)
                     .font(.title2.weight(.bold))
                     .foregroundStyle(CashFlowBankColors.primaryText)
-            }
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(CashFlowBankColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(CashFlowBankColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 6) {
-                BankStatusDetailRow(label: "Imported transactions", value: "\(transactionCount)")
+                VStack(alignment: .leading, spacing: 6) {
+                    BankStatusDetailRow(label: "Imported transactions", value: "\(transactionCount)")
 
-                if let lastSyncedAt {
-                    BankStatusDetailRow(
-                        label: "Last sync",
-                        value: lastSyncedAt.formatted(date: .abbreviated, time: .shortened)
-                    )
-                } else {
-                    BankStatusDetailRow(label: "Last sync", value: "Not synced yet")
+                    if let lastSyncedAt {
+                        BankStatusDetailRow(
+                            label: "Last sync",
+                            value: lastSyncedAt.formatted(date: .abbreviated, time: .shortened)
+                        )
+                    } else {
+                        BankStatusDetailRow(label: "Last sync", value: "Not synced yet")
+                    }
                 }
+                .padding(.top, 4)
             }
-            .padding(.top, 4)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowBankColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var title: String {
@@ -264,6 +262,19 @@ private struct BankStatusPanel: View {
             return CashFlowBankColors.error
         }
     }
+
+    private var statusPillTitle: String {
+        switch status {
+        case .notConnected:
+            return "Optional"
+        case .connected:
+            return "Ready"
+        case .needsReconnect:
+            return "Reconnect"
+        case .error:
+            return "Retry"
+        }
+    }
 }
 
 private struct BankStatusDetailRow: View {
@@ -299,16 +310,7 @@ private struct BankRecoveryMessage: View {
     }
 }
 
-private enum CashFlowBankColors {
-    static let background = Color(red: 10 / 255, green: 10 / 255, blue: 15 / 255)
-    static let surface = Color(red: 26 / 255, green: 26 / 255, blue: 36 / 255)
-    static let accent = Color(red: 74 / 255, green: 158 / 255, blue: 255 / 255)
-    static let primaryText = Color.white
-    static let secondaryText = Color(red: 158 / 255, green: 163 / 255, blue: 176 / 255)
-    static let success = Color(red: 0 / 255, green: 212 / 255, blue: 184 / 255)
-    static let warning = Color(red: 255 / 255, green: 197 / 255, blue: 92 / 255)
-    static let error = Color(red: 255 / 255, green: 95 / 255, blue: 116 / 255)
-}
+typealias CashFlowBankColors = CashFlowTheme
 
 #Preview {
     BankConnectionView()

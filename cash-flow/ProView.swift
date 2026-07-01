@@ -13,13 +13,14 @@ struct ProView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                CashFlowHomeColors.background
+                CashFlowTheme.background
                     .ignoresSafeArea()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         headerPanel
                         planPanel
+                        benefitsPanel
                         actionPanel
                         messagePanel
                     }
@@ -27,7 +28,7 @@ struct ProView: View {
                 }
             }
             .navigationTitle("Cash Flow Pro")
-            .toolbarBackground(CashFlowHomeColors.background, for: .navigationBar)
+            .toolbarBackground(CashFlowTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
         .task {
@@ -36,102 +37,128 @@ struct ProView: View {
     }
 
     private var headerPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(subscriptionManager.isPro ? "Pro Active" : "Upgrade")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(CashFlowHomeColors.secondaryText)
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                CashFlowStatusPill(subscriptionManager.isPro ? "Pro Active" : "Upgrade", color: subscriptionManager.isPro ? CashFlowTheme.success : CashFlowTheme.accent)
 
-            Text("Advanced Income Split")
-                .font(.system(size: 34, weight: .black))
-                .foregroundStyle(CashFlowHomeColors.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
+                Text("Advanced Income Split")
+                    .font(.system(size: 34, weight: .black))
+                    .foregroundStyle(CashFlowTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text("Route each paycheck to savings, bills/reserve, and discretionary spending.")
-                .font(.subheadline)
-                .foregroundStyle(CashFlowHomeColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+                Text("Route each paycheck to savings, bills/reserve, and discretionary spending.")
+                    .font(.subheadline)
+                    .foregroundStyle(CashFlowTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var planPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(subscriptionManager.packageTitle)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(CashFlowHomeColors.primaryText)
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(subscriptionManager.packageTitle)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(CashFlowTheme.primaryText)
 
-                    Text(subscriptionManager.isPro ? "Unlocked on this account." : "Monthly subscription")
-                        .font(.caption)
-                        .foregroundStyle(CashFlowHomeColors.secondaryText)
+                        Text(subscriptionManager.isPro ? "Unlocked on this account." : "Monthly subscription")
+                            .font(.caption)
+                            .foregroundStyle(CashFlowTheme.secondaryText)
+                    }
+
+                    Spacer()
+
+                    Text(subscriptionManager.packagePriceText)
+                        .font(.headline.weight(.black))
+                        .foregroundStyle(CashFlowTheme.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
 
-                Spacer()
-
-                Text(subscriptionManager.packagePriceText)
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(CashFlowHomeColors.accent)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                CashFlowAllocationBar(
+                    savingsPercentage: 20,
+                    billsReservePercentage: 25,
+                    isPro: true
+                )
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var benefitsPanel: some View {
+        CashFlowPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("What Pro unlocks")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(CashFlowTheme.primaryText)
+
+                ProFeatureRow(
+                    title: "Second income bucket",
+                    message: "Keep bills and reserves out of the discretionary number automatically.",
+                    systemImage: "slider.horizontal.3"
+                )
+
+                ProFeatureRow(
+                    title: "Correction-safe history",
+                    message: "Imported paycheck corrections undo the exact amount originally applied.",
+                    systemImage: "clock.arrow.circlepath"
+                )
+
+                ProFeatureRow(
+                    title: "Widget-ready math",
+                    message: "The Discretionary Number snapshot stays aligned with your saved split.",
+                    systemImage: "number.square"
+                )
+            }
+        }
     }
 
     private var actionPanel: some View {
-        VStack(spacing: 12) {
-            if subscriptionManager.isPro {
-                Label("Cash Flow Pro is active", systemImage: "checkmark.seal")
-                    .font(.headline)
-                    .foregroundStyle(CashFlowHomeColors.success)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-            } else {
+        CashFlowPanel {
+            VStack(spacing: 12) {
+                if subscriptionManager.isPro {
+                    Label("Cash Flow Pro is active", systemImage: "checkmark.seal")
+                        .font(.headline)
+                        .foregroundStyle(CashFlowTheme.success)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                } else {
+                    Button {
+                        Task {
+                            await subscriptionManager.purchaseCurrentPackage()
+                        }
+                    } label: {
+                        HStack {
+                            if subscriptionManager.isPurchasing {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "creditcard")
+                                Text("Start Pro")
+                            }
+                        }
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(CashFlowTheme.accent)
+                    .disabled(!subscriptionManager.canPurchase)
+                }
+
                 Button {
                     Task {
-                        await subscriptionManager.purchaseCurrentPackage()
+                        await subscriptionManager.restorePurchases()
                     }
                 } label: {
-                    HStack {
-                        if subscriptionManager.isPurchasing {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "creditcard")
-                            Text("Start Pro")
-                        }
-                    }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
+                    Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(CashFlowHomeColors.accent)
-                .disabled(!subscriptionManager.canPurchase)
+                .buttonStyle(.bordered)
+                .tint(CashFlowTheme.accent)
+                .disabled(subscriptionManager.isLoading || subscriptionManager.isPurchasing)
             }
-
-            Button {
-                Task {
-                    await subscriptionManager.restorePurchases()
-                }
-            } label: {
-                Label("Restore Purchases", systemImage: "arrow.clockwise")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .tint(CashFlowHomeColors.accent)
-            .disabled(subscriptionManager.isLoading || subscriptionManager.isPurchasing)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CashFlowHomeColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     @ViewBuilder
@@ -142,28 +169,54 @@ struct ProView: View {
                 Text("Loading subscription status.")
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(CashFlowHomeColors.secondaryText)
+            .foregroundStyle(CashFlowTheme.secondaryText)
         }
 
         if let setupMessage = subscriptionManager.setupMessage {
             Text(setupMessage)
                 .font(.subheadline)
-                .foregroundStyle(CashFlowHomeColors.secondaryText)
+                .foregroundStyle(CashFlowTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
 
         if let noticeMessage = subscriptionManager.noticeMessage {
             Text(noticeMessage)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(CashFlowHomeColors.success)
+                .foregroundStyle(CashFlowTheme.success)
                 .fixedSize(horizontal: false, vertical: true)
         }
 
         if let errorMessage = subscriptionManager.errorMessage {
             Text(errorMessage)
                 .font(.subheadline)
-                .foregroundStyle(CashFlowHomeColors.error)
+                .foregroundStyle(CashFlowTheme.error)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct ProFeatureRow: View {
+    let title: String
+    let message: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(CashFlowTheme.accent)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(CashFlowTheme.primaryText)
+
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(CashFlowTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

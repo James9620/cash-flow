@@ -226,6 +226,50 @@ struct CashFlowTests {
         #expect(SubscriptionEntitlements.status(activeEntitlementIDs: ["other"]) == .free)
     }
 
+    @Test func onboardingFreeSplitPersistsSavingsAndCompletion() throws {
+        let settings = UserSettings(
+            savingsPercentage: 0,
+            billsReservePercentage: 30,
+            onboardingComplete: false,
+            subscriptionStatus: .free
+        )
+        let draft = OnboardingSettingsDraft(
+            savingsPercentageText: "25",
+            billsReservePercentageText: "30",
+            subscriptionStatus: .free
+        )
+
+        try draft.apply(to: settings, markComplete: true)
+
+        #expect(settings.savingsPercentage == 25)
+        #expect(settings.billsReservePercentage == 0)
+        #expect(settings.subscriptionStatus == .free)
+        #expect(settings.onboardingComplete)
+    }
+
+    @Test func onboardingProSplitRejectsOverAllocation() {
+        let draft = OnboardingSettingsDraft(
+            savingsPercentageText: "60",
+            billsReservePercentageText: "41",
+            subscriptionStatus: .pro
+        )
+
+        do {
+            _ = try draft.validatedValues()
+            Issue.record("Expected onboarding split validation to reject an over-allocated Pro split.")
+        } catch OnboardingSettingsError.splitOverLimit {
+            #expect(true)
+        } catch {
+            Issue.record("Expected splitOverLimit, got \(error).")
+        }
+    }
+
+    @Test func onboardingGateUsesSavedCompletionFlag() {
+        #expect(OnboardingGate.shouldShowOnboarding(settings: nil))
+        #expect(OnboardingGate.shouldShowOnboarding(settings: UserSettings(onboardingComplete: false)))
+        #expect(!OnboardingGate.shouldShowOnboarding(settings: UserSettings(onboardingComplete: true)))
+    }
+
     @Test func widgetSnapshotCountsCurrentMatchingSpendingAndBalance() throws {
         let now = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 6, day: 15)))
         let oldDate = try #require(Calendar.current.date(byAdding: .month, value: -1, to: now))

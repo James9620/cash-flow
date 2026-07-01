@@ -20,6 +20,30 @@ struct ContentView: View {
     let subscriptionManager: SubscriptionManager
 
     var body: some View {
+        Group {
+            if OnboardingGate.shouldShowOnboarding(settings: userSettings.first) {
+                OnboardingView(session: session, subscriptionManager: subscriptionManager)
+            } else {
+                mainTabs
+            }
+        }
+        .task {
+            exportWidgetSnapshot()
+        }
+        .task(id: session.userID) {
+            await subscriptionManager.configureIfPossible(userID: session.userID)
+            syncLocalSubscriptionStatus()
+        }
+        .onChange(of: subscriptionManager.subscriptionStatus) {
+            syncLocalSubscriptionStatus()
+        }
+        .onChange(of: widgetSnapshotSignature) {
+            // Re-export when SwiftData changes so widgets can read the latest compact snapshot.
+            exportWidgetSnapshot()
+        }
+    }
+
+    private var mainTabs: some View {
         TabView {
             HomeView(session: session, subscriptionManager: subscriptionManager)
                 .tabItem {
@@ -35,20 +59,6 @@ struct ContentView: View {
                 .tabItem {
                     Label("Debug", systemImage: "ladybug")
                 }
-        }
-        .task {
-            exportWidgetSnapshot()
-        }
-        .task(id: session.userID) {
-            await subscriptionManager.configureIfPossible(userID: session.userID)
-            syncLocalSubscriptionStatus()
-        }
-        .onChange(of: subscriptionManager.subscriptionStatus) {
-            syncLocalSubscriptionStatus()
-        }
-        .onChange(of: widgetSnapshotSignature) {
-            // Re-export when SwiftData changes so widgets can read the latest compact snapshot.
-            exportWidgetSnapshot()
         }
     }
 

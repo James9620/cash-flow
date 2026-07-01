@@ -8,29 +8,13 @@
 import WidgetKit
 import AppIntents
 
-enum CashFlowWidgetDisplay: String, AppEnum {
+enum CashFlowWidgetDisplay: Equatable {
     case discretionaryNumber
     case progressBar
     case billStack
-
-    static var typeDisplayRepresentation: TypeDisplayRepresentation {
-        "Widget Type"
-    }
-
-    static var caseDisplayRepresentations: [CashFlowWidgetDisplay: DisplayRepresentation] {
-        [
-            .discretionaryNumber: "Discretionary Number",
-            .progressBar: "Progress Bar",
-            .billStack: "Bill Stack"
-        ]
-    }
 }
 
 struct ConfigurationAppIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Cash Flow Widget" }
-    static var description: IntentDescription { "Choose which Cash Flow widget to show." }
-
-    // This lets one widget extension render all three Cash Flow widget styles.
-    @Parameter(title: "Widget Type", default: .discretionaryNumber)
-    var display: CashFlowWidgetDisplay
+    static var title: LocalizedStringResource { "Discretionary Number" }
+    static var description: IntentDescription { "Shows your latest discretionary spending snapshot." }
 }

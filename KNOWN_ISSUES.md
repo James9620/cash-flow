@@ -1,11 +1,11 @@
 # Known Issues
 
-Last updated: 2026-06-24
+Last updated: 2026-07-01
 
 ## Build and Verification
 
 - Full `xcodebuild` validation still needs to be run locally in Xcode. The Codex sandbox cannot complete SwiftPM/Xcode work because SwiftPM cache writes and CoreSimulator services are blocked.
-- Run the app target, `CashFlowWidgetsExtension`, and `CashFlowTests` on the developer machine before moving to Phase 6.
+- Run the app target, `CashFlowWidgetsExtension`, and `CashFlowTests` on the developer machine after Step 7 onboarding and polish changes.
 
 ## Production Configuration
 
@@ -23,8 +23,10 @@ Last updated: 2026-06-24
 
 - Widgets do not appear automatically after bank sign-in. They must be manually added from the iOS Home Screen widget picker.
 - The first production-ready version only includes the Discretionary Number widget.
+- The widget picker now presents the Discretionary Number experience for v1.
 - Progress Bar and Bill Stack are intentionally deferred to future updates. Any current Progress Bar or Bill Stack code should be treated as non-final until those widgets are brought back into scope.
 
 ## Development Tools
 
 - The SwiftData Debug tab remains development-only and should not be treated as production user experience.
+- The Debug tab includes a development-only onboarding reset so first-run setup can be retested without deleting local bank data.

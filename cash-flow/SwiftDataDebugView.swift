@@ -19,6 +19,7 @@ struct SwiftDataDebugView: View {
 
     // This view model gives the debug screen access to the same reset path used by bank recovery work.
     @State private var bankViewModel = BankConnectionViewModel()
+    @State private var onboardingDebugMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -145,6 +146,32 @@ struct SwiftDataDebugView: View {
                             .foregroundStyle(.red)
                     }
                 }
+
+                Section("Onboarding Debug") {
+                    if let settings = userSettings.first {
+                        HStack {
+                            Text("Onboarding Complete")
+                            Spacer()
+                            Text(settings.onboardingComplete ? "true" : "false")
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text("No user settings saved yet.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        resetOnboarding()
+                    } label: {
+                        Label("Show Onboarding Again", systemImage: "arrow.uturn.left")
+                    }
+
+                    if let onboardingDebugMessage {
+                        Text(onboardingDebugMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             .navigationTitle("SwiftData Debug")
         }
@@ -198,6 +225,19 @@ struct SwiftDataDebugView: View {
         } catch {
             assertionFailure("Failed to save SwiftData debug data: \(error)")
         }
+    }
+
+    private func resetOnboarding() {
+        let settings = userSettings.first ?? UserSettings()
+
+        if settings.modelContext == nil {
+            modelContext.insert(settings)
+        }
+
+        // This only resets the first-run gate; it keeps bank data and saved split settings intact for retesting.
+        settings.onboardingComplete = false
+        saveContext()
+        onboardingDebugMessage = "Onboarding will show after you leave the debug tab."
     }
 }
 

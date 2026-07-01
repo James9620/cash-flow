@@ -79,22 +79,8 @@ struct CashFlowWidgetsEntryView: View {
 
     @ViewBuilder
     private func connectedContent(snapshot: CashFlowWidgetSnapshot) -> some View {
-        switch entry.configuration.display {
-        case .discretionaryNumber:
-            DiscretionaryNumberWidget(snapshot: snapshot)
-        case .progressBar:
-            if let item = snapshot.item(for: .progressBar) {
-                ProgressBarWidget(item: item, lastSyncedAt: snapshot.lastSyncedAt)
-            } else {
-                WidgetStateView(title: "No Progress Widget", message: "Create one in Cash Flow.")
-            }
-        case .billStack:
-            if let item = snapshot.item(for: .billStack) {
-                BillStackWidget(item: item, lastSyncedAt: snapshot.lastSyncedAt)
-            } else {
-                WidgetStateView(title: "No Bill Stack", message: "Create one in Cash Flow.")
-            }
-        }
+        // v1 only exposes the Discretionary Number widget. The other renderers stay dormant until those widgets return to scope.
+        DiscretionaryNumberWidget(snapshot: snapshot)
     }
 }
 
@@ -102,15 +88,39 @@ struct DiscretionaryNumberWidget: View {
     let snapshot: CashFlowWidgetSnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            WidgetHeader(title: "Discretionary", lastSyncedAt: snapshot.lastSyncedAt)
+        VStack(alignment: .leading, spacing: 10) {
+            Capsule()
+                .fill(CashFlowWidgetColors.accent)
+                .frame(width: 34, height: 4)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Cash Flow")
+                        .font(.caption2.weight(.black))
+                        .foregroundStyle(CashFlowWidgetColors.secondaryText)
+                        .textCase(.uppercase)
+
+                    Text("Discretionary")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(CashFlowWidgetColors.primaryText)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(syncText)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(CashFlowWidgetColors.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
 
             Spacer(minLength: 0)
 
             Text(snapshot.discretionaryBalance, format: .currency(code: "USD"))
-                .font(.system(size: 34, weight: .black, design: .rounded))
+                .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundStyle(CashFlowWidgetColors.primaryText)
-                .minimumScaleFactor(0.62)
+                .minimumScaleFactor(0.55)
                 .lineLimit(1)
 
             Text("Available now")
@@ -118,6 +128,14 @@ struct DiscretionaryNumberWidget: View {
                 .foregroundStyle(CashFlowWidgetColors.secondaryText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var syncText: String {
+        guard let lastSyncedAt = snapshot.lastSyncedAt else {
+            return "Not synced"
+        }
+
+        return lastSyncedAt.formatted(date: .omitted, time: .shortened)
     }
 }
 
@@ -259,7 +277,7 @@ struct CashFlowWidgets: Widget {
         AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             CashFlowWidgetsEntryView(entry: entry)
         }
-        .configurationDisplayName("Cash Flow")
+        .configurationDisplayName("Discretionary Number")
         .description("Shows your latest discretionary spending snapshot.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
@@ -378,21 +396,7 @@ extension CashFlowWidgetSnapshot {
 
 extension ConfigurationAppIntent {
     fileprivate static var discretionaryPreview: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.display = .discretionaryNumber
-        return intent
-    }
-
-    fileprivate static var progressPreview: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.display = .progressBar
-        return intent
-    }
-
-    fileprivate static var billStackPreview: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.display = .billStack
-        return intent
+        ConfigurationAppIntent()
     }
 }
 
@@ -400,6 +404,4 @@ extension ConfigurationAppIntent {
     CashFlowWidgets()
 } timeline: {
     CashFlowWidgetEntry(date: .now, configuration: .discretionaryPreview, snapshot: .placeholder)
-    CashFlowWidgetEntry(date: .now, configuration: .progressPreview, snapshot: .placeholder)
-    CashFlowWidgetEntry(date: .now, configuration: .billStackPreview, snapshot: .placeholder)
 }
